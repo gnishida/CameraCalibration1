@@ -46,11 +46,6 @@ int main() {
 	/* auxiliary data (e.g. measurements) */
 	real y[15] = {1.4e-1, 1.8e-1, 2.2e-1, 2.5e-1, 2.9e-1, 3.2e-1, 3.5e-1,
 	3.9e-1, 3.7e-1, 5.8e-1, 7.3e-1, 9.6e-1, 1.34, 2.1, 4.39};
-
-	#ifdef TEST_COVAR
-	real covfac;
-	real fjac1[15*3];
-	#endif
 	
 	fcndata_t data;
 	data.m = m;
@@ -75,66 +70,26 @@ int main() {
 	maxfev = 800;
 
 	// 収束チェック用の微小値
-	epsfcn = 0.; //1e-08;
+	epsfcn = 1e-08;
 	mode = 1;
 
 	// 1が推奨されている？
-	factor = 1.e2;
+	factor = 1;//1.e2;
+
 	nprint = 0;
 	info = __cminpack_func__(lmdif)(fcn, &data, m, n, x, fvec, ftol, xtol, gtol, maxfev, epsfcn,
-	diag, mode, factor, nprint, &nfev, fjac, ldfjac,
-	ipvt, qtf, wa1, wa2, wa3, wa4);
+									diag, mode, factor, nprint, &nfev, fjac, ldfjac, ipvt, qtf, wa1, wa2, wa3, wa4);
 	fnorm = __cminpack_func__(enorm)(m, fvec);
 
 	printf(" final l2 norm of the residuals%15.7g\n\n", (double)fnorm);
 	printf(" number of function evaluations%10i\n\n", nfev);
 	printf(" exit parameter %10i\n\n", info);
 	printf(" final approximate solution\n");
-	for (j=0; j<n; ++j) {
+	for (j = 0; j < n; ++j) {
 		printf("%s%15.7g", j%3==0?"\n ":"", (double)x[j]);
 	}
 	printf("\n");
-	ftol = __cminpack_func__(dpmpar)(1);
 
-	#ifdef TEST_COVAR
-	/* test the original covar from MINPACK */
-	covfac = fnorm*fnorm/(m-n);
-	memcpy(fjac1, fjac, sizeof(fjac));
-	__cminpack_func__(covar)(n, fjac1, ldfjac, ipvt, ftol, wa1);
-	/*
-	printf(" covariance (using covar)\n");
-	for (i=0; i<n; ++i) {
-	for (j=0; j<n; ++j)
-	printf("%s%15.7g", j%3==1?"\n ":"", (double)fjac1[i*ldfjac+j]*covfac);
-	}
-	printf("\n");
-	*/
-	#endif
-
-	/* test covar1, which also estimates the rank of the Jacobian */
-	k = __cminpack_func__(covar1)(m, n, fnorm*fnorm, fjac, ldfjac, ipvt, ftol, wa1);
-	printf(" covariance\n");
-	for (i=0; i<n; ++i) {
-		for (j=0; j<n; ++j)
-			printf("%s%15.7g", j%3==0?"\n ":"", (double)fjac[i*ldfjac+j]);
-	}
-	printf("\n");
-	(void)k;
-
-	#ifdef TEST_COVAR
-	if (k == n) {
-		/* comparison only works if covariance matrix has full rank */
-		for (i=0; i<n; ++i) {
-			for (j=0; j<n; ++j) {
-				if (fjac[i*ldfjac+j] != fjac1[i*ldfjac+j]*covfac) {
-					printf("component (%d,%d) of covar and covar1 differ: %g != %g\n", i, j, (double)fjac[i*ldfjac+j], (double)fjac1[i*ldfjac+j]*covfac);
-				}
-			}
-		}
-	}
-	#endif
-
-	/* printf(" rank(J) = %d\n", k != 0 ? k : n); */
 	return 0;
 }
 
