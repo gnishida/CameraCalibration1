@@ -28,7 +28,7 @@ int main (int argc, char *argv[]) {
 		std::vector<cv::Point3f> object_points;
 		for (int j = 0; j < PAT_ROW; j++) {
 			for (int k = 0; k < PAT_COL; k++) {
-				object_points.push_back(cv::Point3f(j * CHESS_SIZE, k * CHESS_SIZE, 0.0f));
+				object_points.push_back(cv::Point3f(k * CHESS_SIZE, j * CHESS_SIZE, 0.0f));
 			}
 		}
 		all_object_points.push_back(object_points);
@@ -76,6 +76,16 @@ int main (int argc, char *argv[]) {
 	for (int i = 0; i < all_object_points.size(); ++i) {
 		std::vector<cv::Point2f> pts;
 		cv::projectPoints(all_object_points[i], rvecs[i], tvecs[i], intrinsic, distortion, pts);
+
+		// 回転行列Rを取得する（Rodriguesにより、3x3行列を得る）
+		cv::Mat dst;
+		cv::Rodrigues(rvecs[i], dst);
+		for (int r = 0; r < dst.rows; ++r) {
+			for (int c = 0; c < dst.cols; ++c) {
+				printf("%.3lf\t", dst.at<double>(r, c));
+			}
+			printf("\n");
+		}
 
 		for (int j = 0; j < pts.size(); ++j) {
 			float error = sqrtf((pts[j].x - all_corners[i][j].x) * (pts[j].x - all_corners[i][j].x) + (pts[j].y - all_corners[i][j].y) * (pts[j].y - all_corners[i][j].y));
