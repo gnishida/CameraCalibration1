@@ -63,7 +63,7 @@ int main (int argc, char *argv[]) {
 
 		cv::drawChessboardCorners(src_img[i], pattern_size, corners, true);
 		cv::imshow("Calibration", src_img[i]);
-		cvWaitKey(0);
+		cv::waitKey(0);
 	}
 	cvDestroyWindow("Calibration");
 
@@ -72,6 +72,7 @@ int main (int argc, char *argv[]) {
 	// (5)内部パラメータ，歪み係数の推定
 	std::vector<cv::Mat> rvecs, tvecs;
 	cv::calibrateCamera(all_object_points, all_corners, src_img[0].size(), intrinsic, distortion, rvecs, tvecs, CV_CALIB_ZERO_TANGENT_DIST | CV_CALIB_FIX_K2 | CV_CALIB_FIX_K3 | CV_CALIB_FIX_K4 | CV_CALIB_FIX_K5 | CV_CALIB_FIX_K6);
+
 	printf("Intrinsic parameter:\n");
 	for (int r = 0; r < 3; ++r) {
 		for (int c = 0; c < 3; ++c) {
