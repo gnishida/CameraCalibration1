@@ -28,6 +28,7 @@ private:
 	static enum{VERTEX,NORMAL,COLOR,TOTAL_VBO_ID};
 
 	Camera camera;
+	QPoint lastPos;
 	std::vector<QVector3D> patVertices;
 };
 

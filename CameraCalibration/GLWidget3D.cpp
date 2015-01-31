@@ -6,6 +6,11 @@
 #include <opencv/highgui.h>
 
 GLWidget3D::GLWidget3D() {
+	// set up the camera
+	camera.setLookAt(0.0f, 0.0f, 0.0f);
+	camera.setYRotation(3.14);
+	camera.setTranslation(0.0f, 0.0f, 1000.0f);
+
 	patVertices.push_back(QVector3D(0, 0, 0));
 	patVertices.push_back(QVector3D(216, 0, 0));
 	patVertices.push_back(QVector3D(216, 144, 0));
@@ -20,7 +25,7 @@ GLWidget3D::GLWidget3D() {
  */
 void GLWidget3D::mousePressEvent(QMouseEvent *e)
 {
-	camera.mouseDown(e->x(), e->y());
+	lastPos = e->pos();
 }
 
 /**
@@ -28,8 +33,6 @@ void GLWidget3D::mousePressEvent(QMouseEvent *e)
  */
 void GLWidget3D::mouseReleaseEvent(QMouseEvent *e)
 {
-	camera.mouseUp();
-
 	updateGL();
 }
 
@@ -38,10 +41,17 @@ void GLWidget3D::mouseReleaseEvent(QMouseEvent *e)
  */
 void GLWidget3D::mouseMoveEvent(QMouseEvent *e)
 {
+	float dx = (float)(e->x() - lastPos.x());
+	float dy = (float)(e->y() - lastPos.y());
+	lastPos = e->pos();
+
 	if (e->buttons() & Qt::LeftButton) {
-		camera.rotate(e->x(), e->y());
+		camera.changeXRotation(dy);
+		camera.changeYRotation(dx);
 	} else if (e->buttons() & Qt::RightButton) {
-		camera.zoom(e->x(), e->y());
+		camera.changeXYZTranslation(0, 0, -dy * camera.dz * 0.02f);
+		if (camera.dz < -9000) camera.dz = -9000;
+		if (camera.dz > 9000) camera.dz = 9000;
 	}
 
 	updateGL();
@@ -70,8 +80,6 @@ void GLWidget3D::resizeGL(int width, int height)
 {
 	height = height?height:1;
 
-	camera.setWindowSize(width, height);
-
 	glViewport( 0, 0, (GLint)width, (GLint)height );
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
@@ -88,9 +96,8 @@ void GLWidget3D::paintGL()
 
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    glLoadIdentity();
-    glTranslatef(0.0, 0.0, -camera.z);
-	glMultMatrixd(camera.rt);
+	glMatrixMode(GL_MODELVIEW);
+	camera.applyCamTransform();
 
 	drawScene();		
 }
@@ -128,6 +135,22 @@ void GLWidget3D::drawScene() {
 
 	printf("%.3lf, %.3lf, %.3lf\n", unprojected_c1.at<double>(0, 0), unprojected_c1.at<double>(1, 0), unprojected_c1.at<double>(2, 0));
 
+	// ワールド座標系
+	glColor3f(0, 0, 1);
+	glPointSize(3);
+	glBegin(GL_LINES);
+	glVertex3f(0, 0, 0);
+	glVertex3f(100, 0, 0);
+	glEnd();
+	glBegin(GL_LINES);
+	glVertex3f(0, 0, 0);
+	glVertex3f(0, 100, 0);
+	glEnd();
+	glBegin(GL_LINES);
+	glVertex3f(0, 0, 0);
+	glVertex3f(0, 0, 100);
+	glEnd();
+
 	glColor3f(1, 0, 0);
 	glBegin(GL_TRIANGLES);
 	for (int i = 0; i < patVertices.size() / 3; ++i) {
@@ -137,7 +160,6 @@ void GLWidget3D::drawScene() {
 	}
 	glEnd();
 
-	glPointSize(10);
 	glBegin(GL_POINTS);
 	glVertex3f(unprojected_c1.at<double>(0, 0), unprojected_c1.at<double>(1, 0), unprojected_c1.at<double>(2, 0));
 	glEnd();
