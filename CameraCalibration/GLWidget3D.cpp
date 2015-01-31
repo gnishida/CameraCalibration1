@@ -2,6 +2,18 @@
 #include "GLWidget3D.h"
 #include "MainWindow.h"
 #include <GL/GLU.h>
+#include <opencv/cv.h>
+#include <opencv/highgui.h>
+
+GLWidget3D::GLWidget3D() {
+	patVertices.push_back(QVector3D(0, 0, 0));
+	patVertices.push_back(QVector3D(216, 0, 0));
+	patVertices.push_back(QVector3D(216, 144, 0));
+
+	patVertices.push_back(QVector3D(0, 0, 0));
+	patVertices.push_back(QVector3D(216, 144, 0));
+	patVertices.push_back(QVector3D(0, 144, 0));
+}
 
 /**
  * This event handler is called when the mouse press events occur.
@@ -86,19 +98,48 @@ void GLWidget3D::paintGL()
 /**
  * Draw the scene.
  */
-void GLWidget3D::drawScene()
-{
-	glRotatef(-1.527, 0, 0, 1);
-	glRotatef(-0.411, 0, 1, 0);
-	glRotatef(-0.499, 1, 0, 0);
-	glTranslatef(147, 75, -952);
+void GLWidget3D::drawScene() {
+	cv::Mat A = cv::Mat::eye(4, 4, CV_64F);
+	cv::Mat P = cv::Mat::eye(4, 4, CV_64F);
+	A.at<double>(0, 0) = 2644.539;
+	A.at<double>(0, 2) = 1117.647;
+	A.at<double>(1, 1) = 2606.132;
+	A.at<double>(1, 2) = 638.9;
+	A.at<double>(2, 2) = 1;
+
+	P.at<double>(0, 0) = 0.836;
+	P.at<double>(0, 1) = 0.011;
+	P.at<double>(0, 2) = 0.549;
+	P.at<double>(0, 3) = -147.315;
+	P.at<double>(1, 0) = 0.021;
+	P.at<double>(1, 1) = 0.998;
+	P.at<double>(1, 2) = -0.052;
+	P.at<double>(1, 3) = -75.438;
+	P.at<double>(2, 0) = -0.548;
+	P.at<double>(2, 1) = 0.054;
+	P.at<double>(2, 2) = 0.835;
+	P.at<double>(2, 3) = 952.71;
+
+	cv::Mat c1(4, 1, CV_64F, cv::Scalar(0));
+	c1.at<double>(3, 0) = 1.0f;
+	cv::Mat invA = A.inv();
+	cv::Mat invP = P.inv();
+	cv::Mat unprojected_c1 = P.inv() * A.inv() * c1;
+
+	printf("%.3lf, %.3lf, %.3lf\n", unprojected_c1.at<double>(0, 0), unprojected_c1.at<double>(1, 0), unprojected_c1.at<double>(2, 0));
 
 	glColor3f(1, 0, 0);
-	glBegin(GL_QUADS);
-	glVertex3f(0, 0, 0);
-	glVertex3f(0, -144, 0);
-	glVertex3f(216, -144, 0);
-	glVertex3f(216, 0, 0);
+	glBegin(GL_TRIANGLES);
+	for (int i = 0; i < patVertices.size() / 3; ++i) {
+		glVertex3f(patVertices[i * 3 + 0].x(), patVertices[i * 3 + 0].y(), patVertices[i * 3 + 0].z());
+		glVertex3f(patVertices[i * 3 + 1].x(), patVertices[i * 3 + 1].y(), patVertices[i * 3 + 1].z());
+		glVertex3f(patVertices[i * 3 + 2].x(), patVertices[i * 3 + 2].y(), patVertices[i * 3 + 2].z());
+	}
+	glEnd();
+
+	glPointSize(10);
+	glBegin(GL_POINTS);
+	glVertex3f(unprojected_c1.at<double>(0, 0), unprojected_c1.at<double>(1, 0), unprojected_c1.at<double>(2, 0));
 	glEnd();
 }
 

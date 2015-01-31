@@ -12,6 +12,7 @@ using namespace std;
 class GLWidget3D : public QGLWidget
 {
 public:
+	GLWidget3D();
 	void drawScene();
 	void loadOBJ(const QString& filename);
 
@@ -27,5 +28,6 @@ private:
 	static enum{VERTEX,NORMAL,COLOR,TOTAL_VBO_ID};
 
 	Camera camera;
+	std::vector<QVector3D> patVertices;
 };
 

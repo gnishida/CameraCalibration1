@@ -30,7 +30,7 @@ Camera::Camera()
 	tq[2] = 0;
 	tq[3] = 0;
 
-	z = 0.0;
+	z = 1000.0;
 }
 
 void Camera::setWindowSize(int w, int h)
