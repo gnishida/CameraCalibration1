@@ -45,8 +45,6 @@ int main (int argc, char *argv[]) {
 
 		std::vector<cv::Point2f> corners;
 		if (cv::findChessboardCorners(src_img[i], pattern_size, corners)) {
-		//int found = cvFindChessboardCorners(src_img[i], pattern_size, &corners[i * PAT_SIZE], &corner_count);
-		//if (found) {
 			fprintf (stderr, "ok\n");
 			found_num++;
 		} else {
@@ -56,7 +54,6 @@ int main (int argc, char *argv[]) {
 		// (4)コーナー位置をサブピクセル精度に修正，描画
 		cv::Mat src_gray(src_img[i].size(), CV_8UC1);
 		cv::cvtColor(src_img[i], src_gray, CV_BGR2GRAY);
-		//cvCvtColor(src_img[i], src_gray, CV_BGR2GRAY);
 		cv::cornerSubPix(src_gray, corners, cv::Size(3, 3), cv::Size(-1, -1), cv::TermCriteria(CV_TERMCRIT_ITER | CV_TERMCRIT_EPS, 20, 0.03));
 
 		all_corners.push_back(corners);
@@ -69,10 +66,26 @@ int main (int argc, char *argv[]) {
 
 	if (found_num != IMAGE_NUM)	return -1;
 
-	// (5)内部パラメータ，歪み係数の推定
+	// (5)内部パラメータ、歪み係数、外部パラメータの推定
 	std::vector<cv::Mat> rvecs, tvecs;
 	cv::calibrateCamera(all_object_points, all_corners, src_img[0].size(), intrinsic, distortion, rvecs, tvecs, CV_CALIB_ZERO_TANGENT_DIST | CV_CALIB_FIX_K2 | CV_CALIB_FIX_K3 | CV_CALIB_FIX_K4 | CV_CALIB_FIX_K5 | CV_CALIB_FIX_K6);
 
+	// (6)再度写像して、誤差を計算する
+	float total_error = 0.0f;
+	int num = 0;
+	for (int i = 0; i < all_object_points.size(); ++i) {
+		std::vector<cv::Point2f> pts;
+		cv::projectPoints(all_object_points[i], rvecs[i], tvecs[i], intrinsic, distortion, pts);
+
+		for (int j = 0; j < pts.size(); ++j) {
+			float error = sqrtf((pts[j].x - all_corners[i][j].x) * (pts[j].x - all_corners[i][j].x) + (pts[j].y - all_corners[i][j].y) * (pts[j].y - all_corners[i][j].y));
+			total_error += error;
+			num++;
+		}
+	}
+	printf("Mean error: %lf\n", total_error/num);
+
+	// (7)パラメータの表示
 	printf("Intrinsic parameter:\n");
 	for (int r = 0; r < 3; ++r) {
 		for (int c = 0; c < 3; ++c) {
