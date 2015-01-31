@@ -136,16 +136,18 @@ void GLWidget3D::drawScene() {
 	printf("%.3lf, %.3lf, %.3lf\n", unprojected_c1.at<double>(0, 0), unprojected_c1.at<double>(1, 0), unprojected_c1.at<double>(2, 0));
 
 	// ワールド座標系
-	glColor3f(0, 0, 1);
 	glPointSize(3);
+	glColor3f(0, 0, 1);
 	glBegin(GL_LINES);
 	glVertex3f(0, 0, 0);
 	glVertex3f(100, 0, 0);
 	glEnd();
+	glColor3f(0, 1, 0);
 	glBegin(GL_LINES);
 	glVertex3f(0, 0, 0);
 	glVertex3f(0, 100, 0);
 	glEnd();
+	glColor3f(1, 0, 0);
 	glBegin(GL_LINES);
 	glVertex3f(0, 0, 0);
 	glVertex3f(0, 0, 100);
