@@ -46,18 +46,20 @@ void MainWindow::openImages() {
 		objectPoints.push_back(imgWidget[i].objectPoints);
 		imagePoints.push_back(imgWidget[i].imagePoints);
 	}
-	cv::Mat cameraMat = cv::Mat::eye(3, 3, CV_64F);
-	cv::Mat distortion = cv::Mat::zeros(1, 8, CV_64F);
+	glWidget->cameraMat = cv::Mat::eye(3, 3, CV_64F);
+	glWidget->distortion = cv::Mat::zeros(1, 8, CV_64F);
 	std::vector<cv::Mat> rvecs, tvecs;
-	double totalError = cv::calibrateCamera(objectPoints, imagePoints, imgWidget[0].imgMat.size(), cameraMat, distortion, rvecs, tvecs, CV_CALIB_ZERO_TANGENT_DIST | CV_CALIB_FIX_K2 | CV_CALIB_FIX_K3 | CV_CALIB_FIX_K4 | CV_CALIB_FIX_K5 | CV_CALIB_FIX_K6);
+	double totalError = cv::calibrateCamera(objectPoints, imagePoints, imgWidget[0].imgMat.size(), glWidget->cameraMat, glWidget->distortion, glWidget->rvecs, glWidget->tvecs, CV_CALIB_ZERO_TANGENT_DIST | CV_CALIB_FIX_K2 | CV_CALIB_FIX_K3 | CV_CALIB_FIX_K4 | CV_CALIB_FIX_K5 | CV_CALIB_FIX_K6);
 	printf("Total error: %lf\n", totalError);
 
-	glWidget->A = cv::Mat::eye(4, 4, CV_64F);
+	/*glWidget->A = cv::Mat::eye(4, 4, CV_64F);
 	for (int r = 0; r < 3; ++r) {
 		for (int c = 0; c < 3; ++c) {
 			glWidget->A.at<double>(r, c) = cameraMat.at<double>(r, c);
 		}
-	}
+	}*/
+
+	/*
 	for (int i = 0; i < 2; ++i) {
 		cv::Mat dst;
 		cv::Rodrigues(rvecs[i], dst);
@@ -71,7 +73,9 @@ void MainWindow::openImages() {
 		for (int r = 0; r < 3; ++r) {
 			glWidget->P[i].at<double>(r, 3) = tvecs[i].at<double>(r, 0);
 		}
+
 	}
+	*/
 
 	glWidget->initialized = true;
 }

@@ -11,7 +11,7 @@ void ImageWidget::setImage(const QString& filename) {
 	// ３Ｄ座標のセット
 	for (int r = 0; r < 7; ++r) {
 		for (int c = 0; c < 10; ++c) {
-			objectPoints.push_back(cv::Point3f(c * 21.7, r * 21.7, 0.0f));
+			objectPoints.push_back(cv::Point3f(c * 21.7, (6-r) * 21.7, 0.0f));
 		}
 	}
 
@@ -20,6 +20,11 @@ void ImageWidget::setImage(const QString& filename) {
 		fprintf (stderr, "ok\n");
 	} else {
 		fprintf (stderr, "fail\n");
+	}
+
+	for (int i = 0; i < imagePoints.size(); ++i) {
+		imagePoints[i].y = imgMat.rows - imagePoints[i].y;
+		//printf("(%lf, %lf)\n", imagePoints[i].x, imagePoints[i].y);
 	}
 
 	// サブピクセル精度のコーナー検出
@@ -63,7 +68,7 @@ void ImageWidget::paintEvent(QPaintEvent * /* event */) {
 	// 検出したコーナーを表示
 	painter.setPen(QPen(QColor(255, 255, 0), 3, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
 	for (int i = 0; i < imagePoints.size(); ++i) {
-		painter.drawEllipse(imagePoints[i].x-6, imagePoints[i].y-6, 12, 12);
+		painter.drawEllipse(imagePoints[i].x-6, image.height()-imagePoints[i].y-6, 12, 12);
 	}
 }
 

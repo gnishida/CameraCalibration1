@@ -23,8 +23,9 @@ private:
 
 public:
 	bool initialized;
-	cv::Mat A;
-	cv::Mat P[2];
+	std::vector<cv::Mat> rvecs, tvecs;
+	cv::Mat cameraMat;
+	cv::Mat distortion;
 
 public:
 	GLWidget3D();

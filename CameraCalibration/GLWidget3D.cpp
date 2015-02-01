@@ -27,7 +27,7 @@ void GLWidget3D::mousePressEvent(QMouseEvent *e)
 	selected = false;
 	for (int r = 0; r < 7; ++r) {
 		for (int c = 0; c < 10; ++c) {
-			float dist2 = SQR(pt.x() - c * 24) + SQR(pt.y() - r * 24);
+			float dist2 = SQR(pt.x() - c * 21.7) + SQR(pt.y() - r * 21.7);
 			if (dist2 < min_dist2) {
 				min_dist2 = dist2;
 				selected = true;
@@ -124,46 +124,6 @@ void GLWidget3D::paintGL()
  * Draw the scene.
  */
 void GLWidget3D::drawScene() {
-	/*
-	// カメラの内部パラメータ行列
-	cv::Mat A = cv::Mat::eye(4, 4, CV_64F);
-	A.at<double>(0, 0) = 2644.539;
-	A.at<double>(0, 2) = 1117.647;
-	A.at<double>(1, 1) = 2606.132;
-	A.at<double>(1, 2) = 638.9;
-	A.at<double>(2, 2) = 1;
-
-	// カメラ１の外部パラメータ行列
-	cv::Mat P1 = cv::Mat::eye(4, 4, CV_64F);
-	P1.at<double>(0, 0) = 0.836;
-	P1.at<double>(0, 1) = 0.011;
-	P1.at<double>(0, 2) = 0.549;
-	P1.at<double>(0, 3) = -147.315;
-	P1.at<double>(1, 0) = 0.021;
-	P1.at<double>(1, 1) = 0.998;
-	P1.at<double>(1, 2) = -0.052;
-	P1.at<double>(1, 3) = -75.438;
-	P1.at<double>(2, 0) = -0.548;
-	P1.at<double>(2, 1) = 0.054;
-	P1.at<double>(2, 2) = 0.835;
-	P1.at<double>(2, 3) = 952.71;
-
-	// カメラ２の外部パラメータ行列
-	cv::Mat P2 = cv::Mat::eye(4, 4, CV_64F);
-	P2.at<double>(0, 0) = 0.926;
-	P2.at<double>(0, 1) = 0.003;
-	P2.at<double>(0, 2) = -0.378;
-	P2.at<double>(0, 3) = -56.936;
-	P2.at<double>(1, 0) = -0.011;
-	P2.at<double>(1, 1) = 1.000;
-	P2.at<double>(1, 2) = -0.020;
-	P2.at<double>(1, 3) = -56.468;
-	P2.at<double>(2, 0) = 0.377;
-	P2.at<double>(2, 1) = 0.023;
-	P2.at<double>(2, 2) = 0.926;
-	P2.at<double>(2, 3) = 940.070;
-	*/
-
 	// ワールド座標系の軸表示
 	glPointSize(3);
 	glColor3f(0, 0, 1);
@@ -190,16 +150,16 @@ void GLWidget3D::drawScene() {
 	glNormal3f(0, 0, 1);
 
 	glTexCoord2f(0, 0);
-	glVertex3f(-24, -24, 0);
+	glVertex3f(-21.7, -21.7, 0);
 
 	glTexCoord2f(1, 0);
-	glVertex3f(240, -24, 0);
+	glVertex3f(217, -21.7, 0);
 
 	glTexCoord2f(1, 1);
-	glVertex3f(240, 168, 0);
+	glVertex3f(217, 21.7*7, 0);
 
 	glTexCoord2f(0, 1);
-	glVertex3f(-24, 168, 0);
+	glVertex3f(-21.7, 21.7*7, 0);
 
 	glEnd();
 	glDisable(GL_TEXTURE_2D);
@@ -215,74 +175,83 @@ void GLWidget3D::drawScene() {
 				glColor3f(1, 1, 0);
 			}
 			glBegin(GL_POINTS);
-			glVertex3f(c * 24, r * 24, 1);
+			glVertex3f(c * 21.7, r * 21.7, 1);
 			glEnd();
 		}
 	}
 
 	if (initialized) {
 		// カメラの座標
-		cv::Mat c(4, 4, CV_64F, cv::Scalar(0));
-		c.at<double>(0, 0) = 0.0f;
-		c.at<double>(1, 0) = 0.0f;
-		c.at<double>(2, 0) = 0.0f;
-		c.at<double>(3, 0) = 1.0f;
-		c.at<double>(0, 1) = 2304;
-		c.at<double>(1, 1) = 0;
-		c.at<double>(2, 1) = 0;
-		c.at<double>(3, 1) = 1.0f;
-		c.at<double>(0, 2) = 2304;
-		c.at<double>(1, 2) = 1296;
-		c.at<double>(2, 2) = 0;
-		c.at<double>(3, 2) = 1.0f;
-		c.at<double>(0, 3) = 0;
-		c.at<double>(1, 3) = 1296;
-		c.at<double>(2, 3) = 0;
-		c.at<double>(3, 3) = 1.0f;
+		std::vector<cv::Mat> c(4);
+		c[0] = cv::Mat(3, 1, CV_64F, cv::Scalar(0));
+		c[0].at<double>(0, 0) = 0;
+		c[0].at<double>(1, 0) = 0;
+		c[0].at<double>(2, 0) = 0.0f;
+		c[1] = cv::Mat(3, 1, CV_64F, cv::Scalar(0));
+		c[1].at<double>(0, 0) = 100;
+		c[1].at<double>(1, 0) = 0;
+		c[1].at<double>(2, 0) = 0.0f;
+		c[2] = cv::Mat(3, 1, CV_64F, cv::Scalar(0));
+		c[2].at<double>(0, 0) = 0;
+		c[2].at<double>(1, 0) = 100;
+		c[2].at<double>(2, 0) = 0.0f;
+		c[3] = cv::Mat(3, 1, CV_64F, cv::Scalar(0));
+		c[3].at<double>(0, 0) = 0;
+		c[3].at<double>(1, 0) = 0;
+		c[3].at<double>(2, 0) = 100.0f;
 
 		// カメラ１の座標を計算
-		cv::Mat unprojected_c1 = P[0].inv() * A.inv() * c;
-
-		/*printf("%.3lf, %.3lf, %.3lf\n", unprojected_c1.at<double>(0, 0), unprojected_c1.at<double>(1, 0), unprojected_c1.at<double>(2, 0));
-		printf("%.3lf, %.3lf, %.3lf\n", unprojected_c1.at<double>(0, 1), unprojected_c1.at<double>(1, 1), unprojected_c1.at<double>(2, 1));
-		printf("%.3lf, %.3lf, %.3lf\n", unprojected_c1.at<double>(0, 2), unprojected_c1.at<double>(1, 2), unprojected_c1.at<double>(2, 2));
-		*/
+		cv::Mat dst;
+		cv::Rodrigues(rvecs[0], dst);
+		std::vector<cv::Mat> unprojected_c1(4);
+		for (int i = 0; i < 4; ++i) {
+			unprojected_c1[i] = dst.inv() * (c[i] - tvecs[0]);
+		}
 
 		// カメラ１の表示
 		glLineWidth(3);
 		glColor3f(0, 0, 1);
-		for (int i = 0; i < 4; ++i) {
-			int next = (i + 1) % 4;
+		for (int i = 1; i <= 3; ++i) {
 			glBegin(GL_LINES);
-			glVertex3f(unprojected_c1.at<double>(0, i), -unprojected_c1.at<double>(1, i), -unprojected_c1.at<double>(2, i));
-			glVertex3f(unprojected_c1.at<double>(0, next), -unprojected_c1.at<double>(1, next), -unprojected_c1.at<double>(2, next));
+			glVertex3f(unprojected_c1[0].at<double>(0, 0), unprojected_c1[0].at<double>(1, 0), -unprojected_c1[0].at<double>(2, 0));
+			glVertex3f(unprojected_c1[i].at<double>(0, 0), unprojected_c1[i].at<double>(1, 0), -unprojected_c1[i].at<double>(2, 0));
 			glEnd();
 		}
 
-		glPointSize(3);
-		glBegin(GL_POINTS);
-		glVertex3f(unprojected_c1.at<double>(0, 0), -unprojected_c1.at<double>(1, 0), -unprojected_c1.at<double>(2, 0));
-		glEnd();
+		std::vector<cv::Point3f> pts;
+		std::vector<cv::Point2f> imgPts;
+		for (int i = 0; i < 4; ++i) {
+			pts.push_back(cv::Point3f(unprojected_c1[i].at<double>(0, 0), unprojected_c1[i].at<double>(1, 0), unprojected_c1[i].at<double>(2, 0)));
+		}
+		cv::projectPoints(pts, rvecs[0], tvecs[0], cameraMat, distortion, imgPts);
+		
 
 
 		// カメラ２の座標を計算
-		cv::Mat unprojected_c2 = P[1].inv() * A.inv() * c;
+		//cv::Mat dst;
+		cv::Rodrigues(rvecs[1], dst);
+		std::vector<cv::Mat> unprojected_c2(4);
+		for (int i = 0; i < 4; ++i) {
+			unprojected_c2[i] = dst.inv() * (c[i] - tvecs[1]);
+		}
 
-		// カメラ１の表示
+
+		// カメラ２の表示
 		glLineWidth(3);
 		glColor3f(0, 0, 1);
-		for (int i = 0; i < 4; ++i) {
-			int next = (i + 1) % 4;
+		for (int i = 1; i <= 3; ++i) {
 			glBegin(GL_LINES);
-			glVertex3f(unprojected_c2.at<double>(0, i), -unprojected_c2.at<double>(1, i), -unprojected_c2.at<double>(2, i));
-			glVertex3f(unprojected_c2.at<double>(0, next), -unprojected_c2.at<double>(1, next), -unprojected_c2.at<double>(2, next));
+			glVertex3f(unprojected_c2[0].at<double>(0, 0), unprojected_c2[0].at<double>(1, 0), -unprojected_c2[0].at<double>(2, 0));
+			glVertex3f(unprojected_c2[i].at<double>(0, 0), unprojected_c2[i].at<double>(1, 0), -unprojected_c2[i].at<double>(2, 0));
 			glEnd();
 		}
 
+		/*
 		glPointSize(3);
 		glBegin(GL_POINTS);
-		glVertex3f(unprojected_c2.at<double>(0, 0), -unprojected_c2.at<double>(1, 0), -unprojected_c2.at<double>(2, 0));
+		glVertex3f(unprojected_c2.at<double>(0, 0), unprojected_c2.at<double>(1, 0), unprojected_c2.at<double>(2, 0));
 		glEnd();
+		*/
 	}
 }
 
