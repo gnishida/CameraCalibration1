@@ -1,11 +1,34 @@
-#include "ImageWidget.h"
+﻿#include "ImageWidget.h"
 #include <QPainter>
 
 ImageWidget::ImageWidget(QWidget* parent) : QWidget(parent) {
 }
 
 void ImageWidget::setImage(const QString& filename) {
-	image.load(filename);
+	imgMat = cv::imread(filename.toUtf8().data(), CV_LOAD_IMAGE_COLOR);
+	cv::cvtColor(imgMat, imgMat, CV_BGR2RGB);
+
+	// ３Ｄ座標のセット
+	for (int r = 0; r < 7; ++r) {
+		for (int c = 0; c < 10; ++c) {
+			objectPoints.push_back(cv::Point3f(c * 21.7, r * 21.7, 0.0f));
+		}
+	}
+
+	// コーナー検出
+	if (cv::findChessboardCorners(imgMat, cv::Size(10, 7), imagePoints)) {
+		fprintf (stderr, "ok\n");
+	} else {
+		fprintf (stderr, "fail\n");
+	}
+
+	// サブピクセル精度のコーナー検出
+	cv::Mat grayMat(imgMat.size(), CV_8UC1);
+	cv::cvtColor(imgMat, grayMat, CV_RGB2GRAY);
+	cv::cornerSubPix(grayMat, imagePoints, cv::Size(3, 3), cv::Size(-1, -1), cv::TermCriteria(CV_TERMCRIT_ITER | CV_TERMCRIT_EPS, 20, 0.03));
+	
+	// QImageの生成
+	image = QImage(imgMat.data, imgMat.cols, imgMat.rows, QImage::Format_RGB888);
 
 	scale = std::min((float)this->size().width() / image.width(), (float)this->size().height() / image.height());
 
@@ -36,6 +59,12 @@ void ImageWidget::paintEvent(QPaintEvent * /* event */) {
 	painter.scale(scale, scale);
 
 	painter.drawImage(QPoint(0, 0), image);
+
+	// 検出したコーナーを表示
+	painter.setPen(QPen(QColor(255, 255, 0), 3, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+	for (int i = 0; i < imagePoints.size(); ++i) {
+		painter.drawEllipse(imagePoints[i].x-6, imagePoints[i].y-6, 12, 12);
+	}
 }
 
 void ImageWidget::mousePressEvent(QMouseEvent *event) {

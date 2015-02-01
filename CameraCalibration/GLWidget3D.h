@@ -6,11 +6,26 @@
 #include "Camera.h"
 #include <QVector3D>
 #include <vector>
+#include <opencv/cv.h>
+#include <opencv/highgui.h>
 
 using namespace std;
 
-class GLWidget3D : public QGLWidget
-{
+class GLWidget3D : public QGLWidget {
+private:
+	Camera camera;
+	QPoint lastPos;
+	GLuint texture;
+
+	bool selected;
+	int min_r;
+	int min_c;
+
+public:
+	bool initialized;
+	cv::Mat A;
+	cv::Mat P[2];
+
 public:
 	GLWidget3D();
 	void drawScene();
@@ -24,15 +39,5 @@ protected:
 	void mouseMoveEvent(QMouseEvent *e);
 	void mouseReleaseEvent(QMouseEvent *e);
 
-private:
-	static enum{VERTEX,NORMAL,COLOR,TOTAL_VBO_ID};
-
-	Camera camera;
-	QPoint lastPos;
-	GLuint texture;
-
-	bool selected;
-	int min_r;
-	int min_c;
 };
 
