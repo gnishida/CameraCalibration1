@@ -8,7 +8,7 @@
 GLWidget3D::GLWidget3D() {
 	// set up the camera
 	camera.setLookAt(0.0f, 0.0f, 0.0f);
-	camera.setYRotation(3.14);
+	camera.setYRotation(0);
 	camera.setTranslation(0.0f, 0.0f, 1000.0f);
 
 	patVertices.push_back(QVector3D(0, 0, 0));
@@ -71,6 +71,12 @@ void GLWidget3D::initializeGL()
 
 	static GLfloat lightPosition[4] = {0.0f, 0.0f, 100.0f, 0.0f};
 	glLightfv(GL_LIGHT0, GL_POSITION, lightPosition);
+
+	QImage img;
+	img.load("checkerboard.jpg");
+	texture = bindTexture(QImage("checkerboard.jpg"));
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 }
 
 /**
@@ -135,7 +141,7 @@ void GLWidget3D::drawScene() {
 
 	printf("%.3lf, %.3lf, %.3lf\n", unprojected_c1.at<double>(0, 0), unprojected_c1.at<double>(1, 0), unprojected_c1.at<double>(2, 0));
 
-	// ワールド座標系
+	// ワールド座標系の軸表示
 	glPointSize(3);
 	glColor3f(0, 0, 1);
 	glBegin(GL_LINES);
@@ -153,18 +159,28 @@ void GLWidget3D::drawScene() {
 	glVertex3f(0, 0, 100);
 	glEnd();
 
-	glColor3f(1, 0, 0);
-	glBegin(GL_TRIANGLES);
-	for (int i = 0; i < patVertices.size() / 3; ++i) {
-		glVertex3f(patVertices[i * 3 + 0].x(), patVertices[i * 3 + 0].y(), patVertices[i * 3 + 0].z());
-		glVertex3f(patVertices[i * 3 + 1].x(), patVertices[i * 3 + 1].y(), patVertices[i * 3 + 1].z());
-		glVertex3f(patVertices[i * 3 + 2].x(), patVertices[i * 3 + 2].y(), patVertices[i * 3 + 2].z());
-	}
+	// チェックボードの表示
+	glEnable(GL_TEXTURE_2D);
+	glBindTexture(GL_TEXTURE_2D, texture);
+	glBegin(GL_QUADS);
+	glColor3f(1, 1, 1);
+	glNormal3f(0, 0, 1);
+	glTexCoord2f(0, 0);
+	glVertex3f(0, 0, 0);
+	glTexCoord2f(1, 0);
+	glVertex3f(216, 0, 0);
+	glTexCoord2f(1, 1);
+	glVertex3f(216, 144, 0);
+	glTexCoord2f(0, 1);
+	glVertex3f(0, 144, 0);
 	glEnd();
+	glDisable(GL_TEXTURE_2D);
 
+	// カメラ１の表示
 	glBegin(GL_POINTS);
-	glVertex3f(unprojected_c1.at<double>(0, 0), unprojected_c1.at<double>(1, 0), unprojected_c1.at<double>(2, 0));
+	glVertex3f(unprojected_c1.at<double>(0, 0), unprojected_c1.at<double>(1, 0), -unprojected_c1.at<double>(2, 0));
 	glEnd();
+	
 }
 
 
