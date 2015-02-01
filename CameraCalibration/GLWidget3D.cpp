@@ -5,11 +5,13 @@
 #include <opencv/cv.h>
 #include <opencv/highgui.h>
 
+#define SQR(x)	((x) * (x))
+
 GLWidget3D::GLWidget3D() {
 	// set up the camera
 	camera.setLookAt(0.0f, 0.0f, 0.0f);
 	camera.setYRotation(0);
-	camera.setTranslation(0.0f, 0.0f, 1000.0f);
+	camera.setTranslation(0.0f, 0.0f, 1500.0f);
 }
 
 /**
@@ -18,6 +20,22 @@ GLWidget3D::GLWidget3D() {
 void GLWidget3D::mousePressEvent(QMouseEvent *e)
 {
 	lastPos = e->pos();
+
+	// チェックボード上のコーナーを選択
+	QVector2D pt = mouseTo2D(e->x(), e->y());
+	float min_dist2 = 100;
+	selected = false;
+	for (int r = 0; r < 7; ++r) {
+		for (int c = 0; c < 10; ++c) {
+			float dist2 = SQR(pt.x() - c * 24) + SQR(pt.y() - r * 24);
+			if (dist2 < min_dist2) {
+				min_dist2 = dist2;
+				selected = true;
+				min_r = r;
+				min_c = c;
+			}
+		}
+	}
 }
 
 /**
@@ -44,6 +62,8 @@ void GLWidget3D::mouseMoveEvent(QMouseEvent *e)
 		camera.changeXYZTranslation(0, 0, -dy * camera.dz * 0.02f);
 		if (camera.dz < -9000) camera.dz = -9000;
 		if (camera.dz > 9000) camera.dz = 9000;
+	} else if (e->buttons() & Qt::MidButton) {
+		camera.changeXYZTranslation(-dx, dy, 0);
 	}
 
 	updateGL();
@@ -166,17 +186,37 @@ void GLWidget3D::drawScene() {
 	glBegin(GL_QUADS);
 	glColor3f(1, 1, 1);
 	glNormal3f(0, 0, 1);
+
 	glTexCoord2f(0, 0);
-	glVertex3f(0, 0, 0);
+	glVertex3f(-24, -24, 0);
+
 	glTexCoord2f(1, 0);
-	glVertex3f(216, 0, 0);
+	glVertex3f(240, -24, 0);
+
 	glTexCoord2f(1, 1);
-	glVertex3f(216, 144, 0);
+	glVertex3f(240, 168, 0);
+
 	glTexCoord2f(0, 1);
-	glVertex3f(0, 144, 0);
+	glVertex3f(-24, 168, 0);
+
 	glEnd();
 	glDisable(GL_TEXTURE_2D);
 
+	// チェックボード上のコーナーを表示
+	for (int r = 0; r < 7; ++r) {
+		for (int c = 0; c < 10; ++c) {
+			glPointSize(6);
+			if (selected && r == min_r && c == min_c) {
+				glPointSize(10);
+				glColor3f(0, 0, 1);
+			} else {
+				glColor3f(1, 1, 0);
+			}
+			glBegin(GL_POINTS);
+			glVertex3f(c * 24, r * 24, 1);
+			glEnd();
+		}
+	}
 
 	// カメラの座標
 	cv::Mat c(4, 4, CV_64F, cv::Scalar(0));
@@ -216,6 +256,7 @@ void GLWidget3D::drawScene() {
 		glEnd();
 	}
 
+	glPointSize(3);
 	glBegin(GL_POINTS);
 	glVertex3f(unprojected_c1.at<double>(0, 0), unprojected_c1.at<double>(1, 0), -unprojected_c1.at<double>(2, 0));
 	glEnd();
@@ -235,8 +276,34 @@ void GLWidget3D::drawScene() {
 		glEnd();
 	}
 
+	glPointSize(3);
 	glBegin(GL_POINTS);
 	glVertex3f(unprojected_c2.at<double>(0, 0), unprojected_c2.at<double>(1, 0), -unprojected_c2.at<double>(2, 0));
 	glEnd();
 }
 
+QVector2D GLWidget3D::mouseTo2D(int x,int y) {
+	GLint viewport[4];
+	GLdouble modelview[16];
+	GLdouble projection[16];
+
+	// retrieve the matrices
+	glGetDoublev(GL_MODELVIEW_MATRIX, modelview);
+	glGetDoublev(GL_PROJECTION_MATRIX, projection);
+	glGetIntegerv(GL_VIEWPORT, viewport);
+
+	// retrieve the projected z-buffer of the origin
+	GLdouble origX, origY, origZ;
+	gluProject(0, 0, 0, modelview, projection, viewport, &origX, &origY, &origZ);
+
+	// set up the projected point
+	GLfloat winX = (float)x;
+	GLfloat winY = (float)viewport[3] - (float)y;
+	GLfloat winZ = origZ;
+	
+	// unproject the image plane coordinate to the model space
+	GLdouble posX, posY, posZ;
+	gluUnProject(winX, winY, winZ, modelview, projection, viewport, &posX, &posY, &posZ);
+
+	return QVector2D(posX, posY);
+}

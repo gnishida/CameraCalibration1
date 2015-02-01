@@ -14,7 +14,7 @@ class GLWidget3D : public QGLWidget
 public:
 	GLWidget3D();
 	void drawScene();
-	void loadOBJ(const QString& filename);
+	QVector2D mouseTo2D(int x,int y);
 
 protected:
 	void initializeGL();
@@ -30,5 +30,9 @@ private:
 	Camera camera;
 	QPoint lastPos;
 	GLuint texture;
+
+	bool selected;
+	int min_r;
+	int min_c;
 };
 
