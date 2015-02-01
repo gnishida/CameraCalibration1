@@ -29,7 +29,6 @@ private:
 
 	Camera camera;
 	QPoint lastPos;
-	std::vector<QVector3D> patVertices;
 	GLuint texture;
 };
 
