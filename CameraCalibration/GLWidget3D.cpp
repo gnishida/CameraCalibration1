@@ -181,13 +181,6 @@ void GLWidget3D::drawScene() {
 	}
 
 	if (initialized) {
-		double cx = cameraMat.at<double>(0, 2);
-		double cy = cameraMat.at<double>(1, 2);
-		double fx = cameraMat.at<double>(0, 0);
-		double fy = cameraMat.at<double>(1, 1);
-		double fovx = 2 * atan((float)640 / (2 * fx)) * 180.0 / CV_PI; 
-
-
 		// カメラの座標
 		std::vector<cv::Mat> c(4);
 		c[0] = cv::Mat(3, 1, CV_64F, cv::Scalar(0));
@@ -264,13 +257,6 @@ void GLWidget3D::drawScene() {
 			glVertex3f(unprojected_c2[i].at<double>(0, 0), unprojected_c2[i].at<double>(1, 0), -unprojected_c2[i].at<double>(2, 0));
 			glEnd();
 		}
-
-		/*
-		glPointSize(3);
-		glBegin(GL_POINTS);
-		glVertex3f(unprojected_c2.at<double>(0, 0), unprojected_c2.at<double>(1, 0), unprojected_c2.at<double>(2, 0));
-		glEnd();
-		*/
 	}
 }
 
