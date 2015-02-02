@@ -32,7 +32,6 @@ void ImageWidget::setImage(const QString& filename) {
 
 	for (int i = 0; i < imagePoints.size(); ++i) {
 		imagePoints[i].y = imgMat.rows - imagePoints[i].y;
-		printf("(%lf, %lf)\n", imagePoints[i].x, imagePoints[i].y);
 	}
 
 	// QImageの生成
