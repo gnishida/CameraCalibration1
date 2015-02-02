@@ -78,4 +78,5 @@ void MainWindow::openImages() {
 	*/
 
 	glWidget->initialized = true;
+	glWidget->updateGL();
 }

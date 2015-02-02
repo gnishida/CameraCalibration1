@@ -139,7 +139,7 @@ void GLWidget3D::drawScene() {
 	glColor3f(1, 0, 0);
 	glBegin(GL_LINES);
 	glVertex3f(0, 0, 0);
-	glVertex3f(0, 0, -500);
+	glVertex3f(0, 0, 500);
 	glEnd();
 
 	// チェックボードの表示
