@@ -62,6 +62,9 @@
     <ClCompile Include="GeneratedFiles\Release\moc_ImageWidget.cpp">
       <Filter>Generated Files\Release</Filter>
     </ClCompile>
+    <ClCompile Include="Calibration.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="MainWindow.h">
@@ -86,6 +89,9 @@
     </ClInclude>
     <ClInclude Include="GLWidget3D.h">
       <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Calibration.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

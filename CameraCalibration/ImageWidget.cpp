@@ -1,7 +1,10 @@
 ﻿#include "ImageWidget.h"
 #include <QPainter>
 
+#define SQR(x)	((x) * (x))
+
 ImageWidget::ImageWidget(QWidget* parent) : QWidget(parent) {
+	selected = false;
 }
 
 void ImageWidget::setImage(const QString& filename) {
@@ -22,16 +25,16 @@ void ImageWidget::setImage(const QString& filename) {
 		fprintf (stderr, "fail\n");
 	}
 
-	for (int i = 0; i < imagePoints.size(); ++i) {
-		imagePoints[i].y = imgMat.rows - imagePoints[i].y;
-		//printf("(%lf, %lf)\n", imagePoints[i].x, imagePoints[i].y);
-	}
-
 	// サブピクセル精度のコーナー検出
 	cv::Mat grayMat(imgMat.size(), CV_8UC1);
 	cv::cvtColor(imgMat, grayMat, CV_RGB2GRAY);
 	cv::cornerSubPix(grayMat, imagePoints, cv::Size(3, 3), cv::Size(-1, -1), cv::TermCriteria(CV_TERMCRIT_ITER | CV_TERMCRIT_EPS, 20, 0.03));
-	
+
+	for (int i = 0; i < imagePoints.size(); ++i) {
+		imagePoints[i].y = imgMat.rows - imagePoints[i].y;
+		printf("(%lf, %lf)\n", imagePoints[i].x, imagePoints[i].y);
+	}
+
 	// QImageの生成
 	image = QImage(imgMat.data, imgMat.cols, imgMat.rows, QImage::Format_RGB888);
 
@@ -58,6 +61,13 @@ void ImageWidget::drawPoint(const QPoint &point) {
 	*/
 }
 
+void ImageWidget::selectPoint(int index) {
+	selected = true;
+	selected_index = index;
+
+	update();
+}
+
 void ImageWidget::paintEvent(QPaintEvent * /* event */) {
 	QPainter painter(this);
 
@@ -66,14 +76,28 @@ void ImageWidget::paintEvent(QPaintEvent * /* event */) {
 	painter.drawImage(QPoint(0, 0), image);
 
 	// 検出したコーナーを表示
-	painter.setPen(QPen(QColor(255, 255, 0), 3, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
 	for (int i = 0; i < imagePoints.size(); ++i) {
+		if (selected && i == selected_index) {
+			painter.setPen(QPen(QColor(0, 0, 255), 3, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+		} else {
+			painter.setPen(QPen(QColor(255, 255, 0), 3, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+		}
 		painter.drawEllipse(imagePoints[i].x-6, image.height()-imagePoints[i].y-6, 12, 12);
+	}
+
+	// 誤差を表示
+	if (selected) {
+		double error = sqrtf(SQR(projectedImagePoints[selected_index].x - imagePoints[selected_index].x) + SQR(projectedImagePoints[selected_index].y - imagePoints[selected_index].y));
+
+		painter.setPen(QPen(QColor(255, 255, 0), 3, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+		painter.setFont(QFont("Selif", 20));
+		QString str = QString("Error: %1").arg(error);
+		painter.drawText(8, 25, str);
 	}
 }
 
 void ImageWidget::mousePressEvent(QMouseEvent *event) {
-	if (event->button() == Qt::LeftButton) {
+	/*if (event->button() == Qt::LeftButton) {
 		drawPoint(event->pos());
-	}
+	}*/
 }

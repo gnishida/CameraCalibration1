@@ -11,8 +11,11 @@
 
 using namespace std;
 
+class MainWindow;
+
 class GLWidget3D : public QGLWidget {
 private:
+	MainWindow* mainWin;
 	Camera camera;
 	QPoint lastPos;
 	GLuint texture;
@@ -28,7 +31,7 @@ public:
 	cv::Mat distortion;
 
 public:
-	GLWidget3D();
+	GLWidget3D(MainWindow* mainWin);
 	void drawScene();
 	QVector2D mouseTo2D(int x,int y);
 

@@ -2,10 +2,13 @@
 #include "GLWidget3D.h"
 #include "MainWindow.h"
 #include <GL/GLU.h>
+#include "Calibration.h"
 
 #define SQR(x)	((x) * (x))
 
-GLWidget3D::GLWidget3D() {
+GLWidget3D::GLWidget3D(MainWindow* mainWin) {
+	this->mainWin = mainWin;
+
 	// set up the camera
 	camera.setLookAt(0.0f, 0.0f, 0.0f);
 	camera.setYRotation(0);
@@ -27,13 +30,20 @@ void GLWidget3D::mousePressEvent(QMouseEvent *e)
 	selected = false;
 	for (int r = 0; r < 7; ++r) {
 		for (int c = 0; c < 10; ++c) {
-			float dist2 = SQR(pt.x() - c * 21.7) + SQR(pt.y() - r * 21.7);
+			float dist2 = SQR(pt.x() - c * 21.7) + SQR(pt.y() - (6-r) * 21.7);
 			if (dist2 < min_dist2) {
 				min_dist2 = dist2;
 				selected = true;
 				min_r = r;
 				min_c = c;
 			}
+		}
+	}
+
+	// 各2D画像上でも、該当の点を表示し、エラーも表示する
+	if (selected) {
+		for (int i = 0; i < 2; ++i) {
+			mainWin->imgWidget[i].selectPoint(min_r * 10 + min_c);
 		}
 	}
 }
@@ -175,7 +185,7 @@ void GLWidget3D::drawScene() {
 				glColor3f(1, 1, 0);
 			}
 			glBegin(GL_POINTS);
-			glVertex3f(c * 21.7, r * 21.7, 1);
+			glVertex3f(c * 21.7, (6-r) * 21.7, 1);
 			glEnd();
 		}
 	}
@@ -229,7 +239,7 @@ void GLWidget3D::drawScene() {
 		for (int i = 0; i < 4; ++i) {
 			pts.push_back(cv::Point3f(unprojected_c1[i].at<double>(0, 0), unprojected_c1[i].at<double>(1, 0), unprojected_c1[i].at<double>(2, 0)));
 		}
-		cv::projectPoints(pts, rvecs[0], tvecs[0], cameraMat, distortion, imgPts);
+		Calibration::projectPoints(pts, rvecs[0], tvecs[0], cameraMat, distortion, imgPts);
 		
 
 

@@ -10,17 +10,19 @@ class MainWindow : public QMainWindow
 {
 	Q_OBJECT
 
+private:
+	Ui::MainWindowClass ui;
+	GLWidget3D* glWidget;
+
+public:
+	ImageWidget imgWidget[2];
+
 public:
 	MainWindow(QWidget *parent = 0, Qt::WFlags flags = 0);
 	~MainWindow();
 
 public slots:
 	void openImages();
-
-private:
-	Ui::MainWindowClass ui;
-	GLWidget3D* glWidget;
-	ImageWidget imgWidget[2];
 };
 
 #endif // MAINWINDOW_H
