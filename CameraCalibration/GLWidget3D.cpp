@@ -139,7 +139,7 @@ void GLWidget3D::drawScene() {
 	glColor3f(1, 0, 0);
 	glBegin(GL_LINES);
 	glVertex3f(0, 0, 0);
-	glVertex3f(0, 0, 500);
+	glVertex3f(0, 0, -500);
 	glEnd();
 
 	// チェックボードの表示
@@ -181,24 +181,31 @@ void GLWidget3D::drawScene() {
 	}
 
 	if (initialized) {
+		double cx = cameraMat.at<double>(0, 2);
+		double cy = cameraMat.at<double>(1, 2);
+		double fx = cameraMat.at<double>(0, 0);
+		double fy = cameraMat.at<double>(1, 1);
+		double fovx = 2 * atan((float)640 / (2 * fx)) * 180.0 / CV_PI; 
+
+
 		// カメラの座標
 		std::vector<cv::Mat> c(4);
 		c[0] = cv::Mat(3, 1, CV_64F, cv::Scalar(0));
 		c[0].at<double>(0, 0) = 0;
 		c[0].at<double>(1, 0) = 0;
-		c[0].at<double>(2, 0) = 0.0f;
+		c[0].at<double>(2, 0) = 0;
 		c[1] = cv::Mat(3, 1, CV_64F, cv::Scalar(0));
 		c[1].at<double>(0, 0) = 100;
 		c[1].at<double>(1, 0) = 0;
-		c[1].at<double>(2, 0) = 0.0f;
+		c[1].at<double>(2, 0) = 0;
 		c[2] = cv::Mat(3, 1, CV_64F, cv::Scalar(0));
 		c[2].at<double>(0, 0) = 0;
 		c[2].at<double>(1, 0) = 100;
-		c[2].at<double>(2, 0) = 0.0f;
+		c[2].at<double>(2, 0) = 0;
 		c[3] = cv::Mat(3, 1, CV_64F, cv::Scalar(0));
 		c[3].at<double>(0, 0) = 0;
 		c[3].at<double>(1, 0) = 0;
-		c[3].at<double>(2, 0) = 100.0f;
+		c[3].at<double>(2, 0) = 100;
 
 		// カメラ１の座標を計算
 		cv::Mat dst;
@@ -210,8 +217,14 @@ void GLWidget3D::drawScene() {
 
 		// カメラ１の表示
 		glLineWidth(3);
-		glColor3f(0, 0, 1);
 		for (int i = 1; i <= 3; ++i) {
+			if (i == 1) {
+				glColor3f(0, 0, 1);
+			} else if (i == 20) {
+				glColor3f(0, 1, 0);
+			} else {
+				glColor3f(1, 0, 0);
+			}
 			glBegin(GL_LINES);
 			glVertex3f(unprojected_c1[0].at<double>(0, 0), unprojected_c1[0].at<double>(1, 0), -unprojected_c1[0].at<double>(2, 0));
 			glVertex3f(unprojected_c1[i].at<double>(0, 0), unprojected_c1[i].at<double>(1, 0), -unprojected_c1[i].at<double>(2, 0));
@@ -238,8 +251,14 @@ void GLWidget3D::drawScene() {
 
 		// カメラ２の表示
 		glLineWidth(3);
-		glColor3f(0, 0, 1);
 		for (int i = 1; i <= 3; ++i) {
+			if (i == 1) {
+				glColor3f(0, 0, 1);
+			} else if (i == 20) {
+				glColor3f(0, 1, 0);
+			} else {
+				glColor3f(1, 0, 0);
+			}
 			glBegin(GL_LINES);
 			glVertex3f(unprojected_c2[0].at<double>(0, 0), unprojected_c2[0].at<double>(1, 0), -unprojected_c2[0].at<double>(2, 0));
 			glVertex3f(unprojected_c2[i].at<double>(0, 0), unprojected_c2[i].at<double>(1, 0), -unprojected_c2[i].at<double>(2, 0));
