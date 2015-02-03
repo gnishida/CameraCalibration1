@@ -47,6 +47,7 @@ void MainWindow::openImages() {
 	std::vector<cv::Mat> rvecs, tvecs;
 	double totalError = Calibration::calibrateCamera(objectPoints, imagePoints, imgWidget[0].imgMat.size(), glWidget->cameraMat, glWidget->distortion, glWidget->rvecs, glWidget->tvecs);
 	printf("Total error: %lf\n", totalError);
+	ui.statusBar->showMessage(QString("Total error: %1").arg(totalError));
 
 	for (int i = 0; i < NUM_IMAGES; ++i) {
 		Calibration::projectPoints(imgWidget[i].objectPoints, glWidget->rvecs[i], glWidget->tvecs[i], glWidget->cameraMat, glWidget->distortion, imgWidget[i].projectedImagePoints);

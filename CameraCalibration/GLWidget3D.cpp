@@ -179,7 +179,7 @@ void GLWidget3D::drawScene() {
 		for (int c = 0; c < 10; ++c) {
 			glPointSize(6);
 			if (selected && r == min_r && c == min_c) {
-				drawSphere(c * 21.7, (6-r) * 21.7, 0, 6, QColor(0, 0, 255));
+				drawSphere(c * 21.7, (6-r) * 21.7, 0, 4, QColor(0, 0, 255));
 			} else {
 				drawSphere(c * 21.7, (6-r) * 21.7, 0, 4, QColor(255, 255, 0));
 			}
