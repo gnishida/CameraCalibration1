@@ -11,6 +11,27 @@ double Calibration::calibrateCamera(std::vector<std::vector<cv::Point3f> >& obje
 		printf("\n");
 	}
 	printf("\n");
+	for (int i = 0; i < rvecs.size(); ++i) {
+		printf("R:\n");
+		cv::Mat dst;
+		cv::Rodrigues(rvecs[i], dst);
+		for (int r = 0; r < dst.rows; ++r) {
+			for (int c = 0; c < dst.cols; ++c) {
+				printf("%.3lf\t", dst.at<double>(r, c));
+			}
+			printf("\n");
+		}
+		printf("\n");
+
+		printf("T:\n");
+		for (int r = 0; r < tvecs[i].rows; ++r) {
+			for (int c = 0; c < tvecs[i].cols; ++c) {
+				printf("%.3lf\t", tvecs[i].at<double>(r, c));
+			}
+			printf("\n");
+		}
+		printf("\n");
+	}
 	
 
 	// 画像の数
@@ -35,15 +56,6 @@ double Calibration::calibrateCamera(std::vector<std::vector<cv::Point3f> >& obje
 	cv::Mat B;
 	computeB(H, size, B);
 
-	printf("B:\n");
-	for (int r = 0; r < B.rows; ++r) {
-		for (int c = 0; c < B.cols; ++c) {
-			printf("%.3lf\t", B.at<double>(r, c));
-		}
-		printf("\n");
-	}
-	printf("\n");
-
 	computeIntrinsicMatrix(B, cameraMat);
 	printf("Camera Matrix:\n");
 	for (int r = 0; r < cameraMat.rows; ++r) {
@@ -54,8 +66,29 @@ double Calibration::calibrateCamera(std::vector<std::vector<cv::Point3f> >& obje
 	}
 	printf("\n");
 
+	cameraMat.at<double>(0, 0) = 780;
+	cameraMat.at<double>(1, 1) = 780;
+
 	for (int i = 0; i < n; ++i) {
 		computeExtrinsicMatrix(cameraMat, H[i], rvecs[i], tvecs[i]);
+
+		printf("R:\n");
+		for (int r = 0; r < rvecs[i].rows; ++r) {
+			for (int c = 0; c < rvecs[i].cols; ++c) {
+				printf("%.3lf\t", rvecs[i].at<double>(r, c));
+			}
+			printf("\n");
+		}
+		printf("\n");
+
+		printf("T:\n");
+		for (int r = 0; r < tvecs[i].rows; ++r) {
+			for (int c = 0; c < tvecs[i].cols; ++c) {
+				printf("%.3lf\t", tvecs[i].at<double>(r, c));
+			}
+			printf("\n");
+		}
+		printf("\n");
 	}
 
 	double totalError = refine(objectPoints, imagePoints, cameraMat, distortion, rvecs, tvecs);
@@ -253,23 +286,8 @@ void Calibration::computeB(std::vector<cv::Mat>& H, cv::Size& size, cv::Mat& B) 
 		A.at<double>(n * 2 + 2, 5) = 0;
 	}
 
-	printf("A:\n");
-	for (int r = 0; r < A.rows; ++r) {
-		for (int c = 0; c < A.cols; ++c) {
-			printf("%.6lf, ", A.at<double>(r, c));
-		}
-		printf("\n");
-	}
-	printf("\n");
-
 	cv::Mat w, u, v;
 	cv::SVD::compute(A, w, u, v);
-
-	printf("V:\n");
-	for (int c = 0; c < v.cols; ++c) {
-		printf("%.6lf\n", v.at<double>(v.rows - 1, c));
-	}
-	printf("\n");
 
 	double B11 = v.at<double>(v.rows - 1, 0);
 	double B12 = v.at<double>(v.rows - 1, 1);
@@ -297,10 +315,11 @@ void Calibration::computeB(std::vector<cv::Mat>& H, cv::Size& size, cv::Mat& B) 
 void Calibration::computeIntrinsicMatrix(cv::Mat& B, cv::Mat& cameraMat) {
 	double v0 = (B.at<double>(0, 1) * B.at<double>(0, 2) - B.at<double>(0, 0) * B.at<double>(1, 2)) / (B.at<double>(0, 0) * B.at<double>(1, 1) - B.at<double>(0, 1) * B.at<double>(0, 1));
 	double lmbd = B.at<double>(2, 2) - (B.at<double>(0, 2) * B.at<double>(0, 2) + v0 * (B.at<double>(0, 1) * B.at<double>(0, 2) - B.at<double>(0, 0) * B.at<double>(1, 2))) / B.at<double>(0, 0);
+	if (lmbd < 0) lmbd = -lmbd;
 	double alpha = sqrt(lmbd / B.at<double>(0, 0));
 	double beta = sqrt(lmbd * B.at<double>(0, 0) / (B.at<double>(0, 0) * B.at<double>(1, 1) - B.at<double>(0, 1) * B.at<double>(0, 1)));
 	double gamma = -B.at<double>(0, 1) * alpha * alpha * beta / lmbd;
-	double u0 = gamma * v0 / beta - B.at<double>(0, 2) * alpha * alpha / lmbd;
+	double u0 = gamma * v0 / alpha - B.at<double>(0, 2) * alpha * alpha / lmbd;
 
 	cameraMat.at<double>(0, 0) = alpha;
 	cameraMat.at<double>(0, 1) = gamma;
@@ -315,15 +334,28 @@ void Calibration::computeIntrinsicMatrix(cv::Mat& B, cv::Mat& cameraMat) {
 
 void Calibration::computeExtrinsicMatrix(cv::Mat& cameraMat, cv::Mat& H, cv::Mat& R, cv::Mat& T) {
 	R = cameraMat.inv() * H;
+	double lmbd = -1.0 / sqrt(R.at<double>(0, 0) * R.at<double>(0, 0) + R.at<double>(1, 0) * R.at<double>(1, 0) + R.at<double>(2, 0) * R.at<double>(2, 0));
+
+	R = R * lmbd;
+
 	T = cv::Mat(3, 1, CV_64F);
 	for (int r = 0; r < 3; ++r) {
 		T.at<double>(r, 0) = R.at<double>(r, 2);
 	}
 
-	cv::Mat r1(R, cv::Rect(0, 0, 1, 3));
-	cv::Mat r2(R, cv::Rect(1, 0, 1, 3));
-	cv::Mat r3(R, cv::Rect(2, 0, 1, 3));
-	r3 = r1.cross(r2);
+	{
+		R.at<double>(0, 2) = R.at<double>(1, 0) * R.at<double>(2, 1) - R.at<double>(2, 0) * R.at<double>(1, 1);
+		R.at<double>(1, 2) = R.at<double>(2, 0) * R.at<double>(0, 1) - R.at<double>(0, 0) * R.at<double>(2, 1);
+		R.at<double>(2, 2) = R.at<double>(0, 0) * R.at<double>(1, 1) - R.at<double>(1, 0) * R.at<double>(0, 1);
+	}
+
+	// 回転行列の各列をnormalize
+	for (int c = 0; c < 3; ++c) {
+		double l = sqrt(R.at<double>(0, c) * R.at<double>(0, c) + R.at<double>(1, c) * R.at<double>(1, c) + R.at<double>(2, c) * R.at<double>(2, c));
+		for (int r = 0; r < 3; ++r) {
+			R.at<double>(r, c) /= l;
+		}
+	}
 }
 
 double Calibration::refine(std::vector<std::vector<cv::Point3f> >& objectPoints, std::vector<std::vector<cv::Point2f> >& imagePoints, cv::Mat& cameraMat, cv::Mat& distortion, std::vector<cv::Mat>& rvecs, std::vector<cv::Mat>& tvecs) {
