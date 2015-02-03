@@ -110,11 +110,7 @@ double Calibration::calibrateCamera(std::vector<std::vector<cv::Point3f> >& obje
 void Calibration::projectPoints(std::vector<cv::Point3f> objectPoints, cv::Mat& rvec, cv::Mat& tvec, cv::Mat& cameraMat, cv::Mat& distortion, std::vector<cv::Point2f>& projectedImagePoints) {
 	// 外部パラメータ行列の作成
 	cv::Mat R;
-	if (rvec.cols == 3) {
-		rvec.copyTo(R);
-	} else {
-		cv::Rodrigues(rvec, R);
-	}
+	cv::Rodrigues(rvec, R);
 
 	cv::Mat P(3, 4, CV_64F);
 	for (int r = 0; r < 3; ++r) {
@@ -159,6 +155,13 @@ void Calibration::projectPoints(std::vector<cv::Point3f> objectPoints, cv::Mat& 
 	}
 }
 
+/**
+ * Homogeneous 行列を計算する。Zhang論文の式(2)を参照のこと。
+ *
+ * @param objectPoints		3D座標のリスト
+ * @param imagePoints		2D座標のリスト
+ * @param H					計算されたHomogeneous行列
+ */
 void Calibration::computeH(std::vector<cv::Point3f>& objectPoints, std::vector<cv::Point2f>& imagePoints, cv::Mat& H) {
 	cv::Mat A(objectPoints.size() * 2, 9, CV_64F);
 	for (int i = 0; i < objectPoints.size(); ++i) {
@@ -183,30 +186,8 @@ void Calibration::computeH(std::vector<cv::Point3f>& objectPoints, std::vector<c
 		A.at<double>(i * 2 + 1, 8) = -imagePoints[i].y;
 	}
 
-	FILE* fp = fopen("test.txt", "w");
-	fprintf(fp, "[");
-	for (int r = 0; r < A.rows; ++r) {
-		if (r > 0) fprintf(fp, ";\n");
-		for (int c = 0; c < 9; ++c) {
-			if (c > 0) fprintf(fp, ",");
-			fprintf(fp, "%.3f", A.at<double>(r, c));
-		}
-	}
-	fprintf(fp, "]\n\n");
-	fclose(fp);
-
 	cv::Mat w, u, v;
 	cv::SVD::compute(A, w, u, v);
-
-	/*
-	for (int r = 0; r < v.rows; ++r) {
-		for (int c = 0; c < v.cols; ++c) {
-			printf("%.3f, ", v.at<double>(r, c));
-		}
-		printf("\n");
-	}
-	printf("\n");
-	*/
 	
 	H = cv::Mat(3, 3, CV_64F);
 	H.at<double>(0, 0) = v.at<double>(v.rows - 1, 0);
@@ -235,6 +216,13 @@ void Calibration::computeH(std::vector<cv::Point3f>& objectPoints, std::vector<c
 	*/
 }
 
+/**
+ * 行列B=(AA^T)^-1を計算する。Zhang論文の式(9)を参照のこと。
+ * 
+ * @param H			homogeneous行列
+ * @param size		画像のサイズ
+ * @param B			計算された行列B
+ */
 void Calibration::computeB(std::vector<cv::Mat>& H, cv::Size& size, cv::Mat& B) {
 	int n = H.size();
 
@@ -333,6 +321,14 @@ void Calibration::computeIntrinsicMatrix(cv::Mat& B, cv::Mat& cameraMat) {
 	cameraMat.at<double>(2, 2) = 1;
 }
 
+/**
+ * カメラ外部パラメータ行列を計算する
+ *
+ * @param cameraMat		カメラ内部パラメータ行列
+ * @param H				homogeneous行列
+ * @param R				計算された回転行列(3x1)
+ * @param T				計算された並進行列(3x1)
+ */
 void Calibration::computeExtrinsicMatrix(cv::Mat& cameraMat, cv::Mat& H, cv::Mat& R, cv::Mat& T) {
 	cv::Mat R33(3, 3, CV_64F);
 	R33 = cameraMat.inv() * H;
@@ -366,13 +362,19 @@ void Calibration::computeExtrinsicMatrix(cv::Mat& cameraMat, cv::Mat& H, cv::Mat
 
 double Calibration::refine(std::vector<std::vector<cv::Point3f> >& objectPoints, std::vector<std::vector<cv::Point2f> >& imagePoints, cv::Mat& cameraMat, cv::Mat& distortion, std::vector<cv::Mat>& rvecs, std::vector<cv::Mat>& tvecs) {
 	// パラメータの数
-	const int n = 18;
+	const int NUM_PARAMS = 18;
 
-	// 観測データの数 ((x, y) * 70 * 画像数)
-	const int m = 280; 
+	// 画像数
+	int n = objectPoints.size();
+
+	// データ数
+	int total_m = 0;
+	for (int i = 0; i < n; ++i) {
+		total_m += objectPoints[i].size();
+	}
 
 	// パラメータ（alpha, beta, gamma, u0, v0, (rx, ry, rz, tx, ty, tz) * 画像数 )
-	real x[n];
+	real x[NUM_PARAMS];
 
 	// パラメータの初期推定値
 	x[0] = cameraMat.at<double>(0, 0); // alpha
@@ -390,14 +392,8 @@ double Calibration::refine(std::vector<std::vector<cv::Point3f> >& objectPoints,
 		x[i * 6 + 11] = tvecs[i].at<double>(2, 0); // tz
 	}
 
-	printf("x:\n");
-	for (int i = 0; i < n; ++i) {
-		printf("%.3lf\n", x[i]);
-	}
-	printf("\n");
-
-	// 観測データ（m個）
-	real y[m];
+	// 観測データ（total_m * (x,y)の２個分）
+	real* y = new real[total_m * 2];
 	int index = 0;
 	for (int i = 0; i < imagePoints.size(); ++i) {
 		for (int j = 0; j < imagePoints[i].size(); ++j) {
@@ -407,32 +403,33 @@ double Calibration::refine(std::vector<std::vector<cv::Point3f> >& objectPoints,
 	}
 
 	// 真値と観測データとの誤差が格納される配列
-	real fvec[m];
+	real* fvec = new real[total_m * 2];
 
 	// 結果のヤコビ行列
-	real fjac[m*n];
+	real* fjac = new real[total_m * 2 * NUM_PARAMS];
 
 	// lmdif内部使用パラメータ
-	int ipvt[n];
+	int ipvt[NUM_PARAMS];
 
-	real diag[n], qtf[n], wa1[n], wa2[n], wa3[n], wa4[m];
+	real diag[NUM_PARAMS], qtf[NUM_PARAMS], wa1[NUM_PARAMS], wa2[NUM_PARAMS], wa3[NUM_PARAMS];
+	real* wa4 = new real[total_m * 2];
 
 	// 観測データを格納する構造体オブジェクト
 	fcndata_t data;
-	data.m = m;
+	data.m = total_m * 2;
 	data.y = y;
 	data.objectPoints = &objectPoints;
 	data.imagePoints = &imagePoints;
 
 	// 観測データの数と同じ値にすることを推奨する
-	int ldfjac = m;
+	int ldfjac = total_m * 2;
 
 	// 各種パラメータ（推奨値のまま）
 	real ftol = sqrt(__cminpack_func__(dpmpar)(1));
 	real xtol = sqrt(__cminpack_func__(dpmpar)(1));
 	real gtol = 0.;
 
-	// 何回繰り返すか？
+	// 最大何回繰り返すか？
 	int maxfev = 1600;
 
 	// 収束チェック用の微小値
@@ -446,24 +443,13 @@ double Calibration::refine(std::vector<std::vector<cv::Point3f> >& objectPoints,
 	int nfev;
 
 	int nprint = 0;
-	int info = __cminpack_func__(lmdif)(fcn, &data, m, n, x, fvec, ftol, xtol, gtol, maxfev, epsfcn,
+	int info = __cminpack_func__(lmdif)(fcn, &data, total_m * 2, NUM_PARAMS, x, fvec, ftol, xtol, gtol, maxfev, epsfcn,
 									diag, mode, factor, nprint, &nfev, fjac, ldfjac, ipvt, qtf, wa1, wa2, wa3, wa4);
-	real fnorm = __cminpack_func__(enorm)(m, fvec);
+	real fnorm = __cminpack_func__(enorm)(total_m * 2, fvec);
 
-	printf(" final l2 norm of the residuals%15.7g\n\n", (double)fnorm);
-	printf(" number of function evaluations%10i\n\n", nfev);
-	printf(" exit parameter %10i\n\n", info);
-	printf(" final approximate solution\n");
-	for (int i = 0; i < n; ++i) {
-		printf("%lf\t", (double)x[i]);
-	}
-	printf("\n");
-
-	printf("x:\n");
-	for (int i = 0; i < n; ++i) {
-		printf("%.3lf\n", x[i]);
-	}
-	printf("\n");
+	printf("final l2 norm of the residuals: %15.7g\n\n", (double)fnorm);
+	printf("number of function evaluations: %10i\n\n", nfev);
+	printf("exit parameter %10i\n\n", info);
 
 	// 収束結果を反映する
 	cameraMat.at<double>(0, 0) = x[0]; // alpha
@@ -494,6 +480,12 @@ double Calibration::refine(std::vector<std::vector<cv::Point3f> >& objectPoints,
 		}
 	}
 
+	// メモリ解放
+	delete [] y;
+	delete [] fvec;
+	delete [] fjac;
+	delete [] wa4;
+
 	return total_error / 140;
 }
 
@@ -520,6 +512,9 @@ int Calibration::fcn(void *p, int m, int n, const real *x, real *fvec, int iflag
 		return 0;
 	}
 
+	// 画像の数
+	int N = ((fcndata_t*)p)->objectPoints->size();
+
 	// カメラ内部パラメータ行列
 	cv::Mat cameraMat = cv::Mat::eye(3, 3, CV_64F);
 	cameraMat.at<double>(0, 0) = x[0]; // alpha
@@ -534,7 +529,7 @@ int Calibration::fcn(void *p, int m, int n, const real *x, real *fvec, int iflag
 
 	std::vector<cv::Mat> rvecs(2);
 	std::vector<cv::Mat> tvecs(2);
-	for (int i = 0; i < 2; ++i) {
+	for (int i = 0; i < N; ++i) {
 		// カメラ外部パラメータ行列
 		rvecs[i] = cv::Mat(3, 1, CV_64F);
 		rvecs[i].at<double>(0, 0) = x[i * 6 + 6];
@@ -549,12 +544,12 @@ int Calibration::fcn(void *p, int m, int n, const real *x, real *fvec, int iflag
 
 	// 真値と観測データの差を計算する
 	int index = 0;
-	for (int i = 0; i < 2; ++i) {
+	for (int i = 0; i < N; ++i) {
 		std::vector<cv::Point2f> projectedImagePoints;
 		
 		projectPoints(((fcndata_t*)p)->objectPoints->at(i), rvecs[i], tvecs[i], cameraMat, distortion, projectedImagePoints);
 
-		for (int j = 0; j < 70; ++j) {
+		for (int j = 0; j < ((fcndata_t*)p)->objectPoints->at(i).size(); ++j) {
 			// 射影結果と観測データの誤差を格納する
 			fvec[index++] = SQR(projectedImagePoints[j].x - ((fcndata_t*)p)->imagePoints->at(i).at(j).x);
 			fvec[index++] = SQR(projectedImagePoints[j].y - ((fcndata_t*)p)->imagePoints->at(i).at(j).y);
