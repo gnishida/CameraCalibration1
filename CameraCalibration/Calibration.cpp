@@ -204,33 +204,94 @@ void Calibration::computeH(std::vector<cv::Point3f>& objectPoints, std::vector<c
 void Calibration::computeB(std::vector<cv::Mat>& H, cv::Size& size, cv::Mat& B) {
 	int n = H.size();
 
-	double u0 = size.width * 0.5;
-	double v0 = size.height * 0.5;
-
-	cv::Mat A(n * 2, 3, CV_64F);
+	cv::Mat A(n * 2 + 3, 6, CV_64F);
 	for (int i = 0; i < n; ++i) {
-		A.at<double>(i * 2 + 0, 0) = H[i].at<double>(0, 0) * H[i].at<double>(1, 0) - u0 * (H[i].at<double>(0, 0) * H[i].at<double>(1, 2) + H[i].at<double>(0, 2) * H[i].at<double>(1, 0));
-		A.at<double>(i * 2 + 0, 1) = H[i].at<double>(0, 1) * H[i].at<double>(1, 1) - v0 * (H[i].at<double>(0, 1) * H[i].at<double>(1, 2) + H[i].at<double>(0, 2) * H[i].at<double>(1, 1));
-		A.at<double>(i * 2 + 0, 2) = H[i].at<double>(0, 2) * H[i].at<double>(1, 2);
+		double h11 = H[i].at<double>(0, 0);
+		double h12 = H[i].at<double>(0, 1);
+		double h13 = H[i].at<double>(0, 2);
+		double h21 = H[i].at<double>(1, 0);
+		double h22 = H[i].at<double>(1, 1);
+		double h23 = H[i].at<double>(1, 2);
+		double h31 = H[i].at<double>(2, 0);
+		double h32 = H[i].at<double>(2, 1);
+		double h33 = H[i].at<double>(2, 2);
 
-		A.at<double>(i * 2 + 1, 0) = H[i].at<double>(0, 0) * H[i].at<double>(0, 0) - H[i].at<double>(1, 0) * H[i].at<double>(1, 0) - 2 * u0 * (H[i].at<double>(0, 0) * H[i].at<double>(0, 2) - H[i].at<double>(1, 0) * H[i].at<double>(1, 2));
-		A.at<double>(i * 2 + 1, 1) = H[i].at<double>(0, 1) * H[i].at<double>(0, 1) - H[i].at<double>(1, 1) * H[i].at<double>(1, 1) - 2 * v0 * (H[i].at<double>(0, 1) * H[i].at<double>(0, 2) - H[i].at<double>(1, 1) * H[i].at<double>(1, 2));
-		A.at<double>(i * 2 + 1, 2) = H[i].at<double>(0, 2) * H[i].at<double>(0, 2) - H[i].at<double>(1, 2) * H[i].at<double>(1, 2);
+		A.at<double>(i * 2 + 0, 0) = h11 * h11;
+		A.at<double>(i * 2 + 0, 1) = h11 * h22 + h12 * h21;
+		A.at<double>(i * 2 + 0, 2) = h12 * h22;
+		A.at<double>(i * 2 + 0, 3) = h11 * h23 + h13 * h21;
+		A.at<double>(i * 2 + 0, 4) = h12 * h23 + h13 * h22;
+		A.at<double>(i * 2 + 0, 5) = h13 * h23;
+
+		A.at<double>(i * 2 + 1, 0) = h11 * h11 - h21 * h21;
+		A.at<double>(i * 2 + 1, 1) = h11 * h12 * 2 - h21 * h22 * 2;
+		A.at<double>(i * 2 + 1, 2) = h11 * h12 - h22 * h22;
+		A.at<double>(i * 2 + 1, 3) = h11 * h13 * 2 - h21 * h23 * 2;
+		A.at<double>(i * 2 + 1, 4) = h12 * h13 * 2 - h22 * h23 * 2;
+		A.at<double>(i * 2 + 1, 5) = h13 * h13 - h23 * h23;
 	}
+	{
+		A.at<double>(n * 2 + 0, 0) = 0;
+		A.at<double>(n * 2 + 0, 1) = 1;
+		A.at<double>(n * 2 + 0, 2) = 0;
+		A.at<double>(n * 2 + 0, 3) = 0;
+		A.at<double>(n * 2 + 0, 4) = 0;
+		A.at<double>(n * 2 + 0, 5) = 0;
+
+		A.at<double>(n * 2 + 1, 0) = size.width * 0.5;
+		A.at<double>(n * 2 + 1, 1) = 0;
+		A.at<double>(n * 2 + 1, 2) = 0;
+		A.at<double>(n * 2 + 1, 3) = 1;
+		A.at<double>(n * 2 + 1, 4) = 0;
+		A.at<double>(n * 2 + 1, 5) = 0;
+
+		A.at<double>(n * 2 + 2, 0) = 0;
+		A.at<double>(n * 2 + 2, 1) = 0;
+		A.at<double>(n * 2 + 2, 2) = size.height * 0.5;
+		A.at<double>(n * 2 + 2, 3) = 0;
+		A.at<double>(n * 2 + 2, 4) = 1;
+		A.at<double>(n * 2 + 2, 5) = 0;
+	}
+
+	printf("A:\n");
+	for (int r = 0; r < A.rows; ++r) {
+		for (int c = 0; c < A.cols; ++c) {
+			printf("%.6lf, ", A.at<double>(r, c));
+		}
+		printf("\n");
+	}
+	printf("\n");
 
 	cv::Mat w, u, v;
 	cv::SVD::compute(A, w, u, v);
 
+	printf("V:\n");
+	for (int c = 0; c < v.cols; ++c) {
+		printf("%.6lf\n", v.at<double>(v.rows - 1, c));
+	}
+	printf("\n");
+
+	double B11 = v.at<double>(v.rows - 1, 0);
+	double B12 = v.at<double>(v.rows - 1, 1);
+	double B22 = v.at<double>(v.rows - 1, 2);
+	double B13 = v.at<double>(v.rows - 1, 3);
+	double B23 = v.at<double>(v.rows - 1, 4);
+	double B33 = v.at<double>(v.rows - 1, 5);
+
 	B = cv::Mat(3, 3, CV_64F);
-	B.at<double>(0, 0) = v.at<double>(v.rows - 1, 0);
-	B.at<double>(0, 1) = 0;
-	B.at<double>(0, 2) = -u0 * v.at<double>(v.rows - 1, 0);
-	B.at<double>(1, 0) = 0;
-	B.at<double>(1, 1) = v.at<double>(v.rows - 1, 1);
-	B.at<double>(1, 2) = -v0 * v.at<double>(v.rows - 1, 1);
-	B.at<double>(2, 0) = -u0 * v.at<double>(v.rows - 1, 0);
-	B.at<double>(2, 1) = -v0 * v.at<double>(v.rows - 1, 1);
-	B.at<double>(2, 2) = v.at<double>(v.rows - 1, 2);
+	B.at<double>(0, 0) = B11;
+	B.at<double>(0, 1) = B12;
+	B.at<double>(0, 2) = B13;
+	B.at<double>(1, 0) = B12;
+	B.at<double>(1, 1) = B22;
+	B.at<double>(1, 2) = B23;
+	B.at<double>(2, 0) = B13;
+	B.at<double>(2, 1) = B23;
+	B.at<double>(2, 2) = B33;
+
+	if (B11 < 0) {
+		B = -B;
+	}
 }
 
 void Calibration::computeIntrinsicMatrix(cv::Mat& B, cv::Mat& cameraMat) {

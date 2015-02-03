@@ -6,6 +6,8 @@
 #include "GLWidget3D.h"
 #include "ImageWidget.h"
 
+#define NUM_IMAGES	2
+
 class MainWindow : public QMainWindow
 {
 	Q_OBJECT
@@ -15,7 +17,7 @@ private:
 	GLWidget3D* glWidget;
 
 public:
-	ImageWidget imgWidget[2];
+	ImageWidget imgWidget[NUM_IMAGES];
 
 public:
 	MainWindow(QWidget *parent = 0, Qt::WFlags flags = 0);

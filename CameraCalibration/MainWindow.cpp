@@ -18,31 +18,27 @@ MainWindow::MainWindow(QWidget *parent, Qt::WFlags flags) : QMainWindow(parent, 
 
 	w->setFixedSize(400, 500);
 	w->setLayout(new QVBoxLayout);
-	w->layout()->addWidget(&imgWidget[0]);
-	w->layout()->addWidget(&imgWidget[1]);
-
-	imgWidget[0].setFixedSize(400, 250);
-	imgWidget[1].setFixedSize(400, 250);
+	for (int i = 0; i < NUM_IMAGES; ++i) {
+		w->layout()->addWidget(&imgWidget[i]);
+		imgWidget[i].setFixedSize(400, 250);
+	}
 }
 
 MainWindow::~MainWindow() {
 }
 
 void MainWindow::openImages() {
-	QString filename = QFileDialog::getOpenFileName(this, tr("Open File"), "", tr("Image files (*.jpg)"));
-	if (filename.isEmpty()) return;
+	for (int i = 0; i < NUM_IMAGES; ++i) {
+		QString filename = QFileDialog::getOpenFileName(this, tr("Open File"), "", tr("Image files (*.jpg)"));
+		if (filename.isEmpty()) return;
 
-	imgWidget[0].setImage(filename);
-
-	filename = QFileDialog::getOpenFileName(this, tr("Open File"), "", tr("Image files (*.jpg)"));
-	if (filename.isEmpty()) return;
-
-	imgWidget[1].setImage(filename);
+		imgWidget[i].setImage(filename);
+	}
 	
 	// カメラ内部パラメータ、歪み係数、外部パラメータの推定
 	std::vector<std::vector<cv::Point3f> > objectPoints;
 	std::vector<std::vector<cv::Point2f> > imagePoints;
-	for (int i = 0; i < 2; ++i) {
+	for (int i = 0; i < NUM_IMAGES; ++i) {
 		objectPoints.push_back(imgWidget[i].objectPoints);
 		imagePoints.push_back(imgWidget[i].imagePoints);
 	}
@@ -52,7 +48,7 @@ void MainWindow::openImages() {
 	double totalError = Calibration::calibrateCamera(objectPoints, imagePoints, imgWidget[0].imgMat.size(), glWidget->cameraMat, glWidget->distortion, glWidget->rvecs, glWidget->tvecs);
 	printf("Total error: %lf\n", totalError);
 
-	for (int i = 0; i < 2; ++i) {
+	for (int i = 0; i < NUM_IMAGES; ++i) {
 		Calibration::projectPoints(imgWidget[i].objectPoints, glWidget->rvecs[i], glWidget->tvecs[i], glWidget->cameraMat, glWidget->distortion, imgWidget[i].projectedImagePoints);
 	}
 

@@ -42,7 +42,7 @@ void GLWidget3D::mousePressEvent(QMouseEvent *e)
 
 	// 各2D画像上でも、該当の点を表示し、エラーも表示する
 	if (selected) {
-		for (int i = 0; i < 2; ++i) {
+		for (int i = 0; i < NUM_IMAGES; ++i) {
 			mainWin->imgWidget[i].selectPoint(min_r * 10 + min_c);
 		}
 	}
@@ -210,39 +210,34 @@ void GLWidget3D::drawScene() {
 		c[3].at<double>(1, 0) = 0;
 		c[3].at<double>(2, 0) = 100;
 
-		// カメラ１の座標を計算
-		cv::Mat dst;
-		cv::Rodrigues(rvecs[0], dst);
-		std::vector<cv::Mat> unprojected_c1(4);
-		for (int i = 0; i < 4; ++i) {
-			unprojected_c1[i] = dst.inv() * (c[i] - tvecs[0]);
-		}
-
-		// カメラ１の表示
-		glLineWidth(3);
-		for (int i = 1; i <= 3; ++i) {
-			if (i == 1) {
-				glColor3f(0, 0, 1);
-			} else if (i == 20) {
-				glColor3f(0, 1, 0);
-			} else {
-				glColor3f(1, 0, 0);
+		for (int i = 0; i < NUM_IMAGES; ++i) {
+			// カメラ座標を計算
+			cv::Mat dst;
+			cv::Rodrigues(rvecs[0], dst);
+			std::vector<cv::Mat> unprojected_c(4);
+			for (int k = 0; k < 4; ++k) {
+				unprojected_c[k] = dst.inv() * (c[k] - tvecs[0]);
 			}
-			glBegin(GL_LINES);
-			glVertex3f(unprojected_c1[0].at<double>(0, 0), unprojected_c1[0].at<double>(1, 0), -unprojected_c1[0].at<double>(2, 0));
-			glVertex3f(unprojected_c1[i].at<double>(0, 0), unprojected_c1[i].at<double>(1, 0), -unprojected_c1[i].at<double>(2, 0));
-			glEnd();
-		}
 
-		std::vector<cv::Point3f> pts;
-		std::vector<cv::Point2f> imgPts;
-		for (int i = 0; i < 4; ++i) {
-			pts.push_back(cv::Point3f(unprojected_c1[i].at<double>(0, 0), unprojected_c1[i].at<double>(1, 0), unprojected_c1[i].at<double>(2, 0)));
+			// カメラの表示
+			glLineWidth(3);
+			for (int k = 1; k <= 3; ++k) {
+				if (k == 1) {
+					glColor3f(0, 0, 1);
+				} else if (k == 2) {
+					glColor3f(0, 1, 0);
+				} else {
+					glColor3f(1, 0, 0);
+				}
+				glBegin(GL_LINES);
+				glVertex3f(unprojected_c[0].at<double>(0, 0), unprojected_c[0].at<double>(1, 0), -unprojected_c[0].at<double>(2, 0));
+				glVertex3f(unprojected_c[k].at<double>(0, 0), unprojected_c[k].at<double>(1, 0), -unprojected_c[k].at<double>(2, 0));
+				glEnd();
+			}
 		}
-		Calibration::projectPoints(pts, rvecs[0], tvecs[0], cameraMat, distortion, imgPts);
 		
 
-
+		/*
 		// カメラ２の座標を計算
 		//cv::Mat dst;
 		cv::Rodrigues(rvecs[1], dst);
@@ -267,6 +262,7 @@ void GLWidget3D::drawScene() {
 			glVertex3f(unprojected_c2[i].at<double>(0, 0), unprojected_c2[i].at<double>(1, 0), -unprojected_c2[i].at<double>(2, 0));
 			glEnd();
 		}
+		*/
 	}
 }
 
