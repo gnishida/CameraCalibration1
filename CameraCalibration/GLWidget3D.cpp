@@ -179,14 +179,10 @@ void GLWidget3D::drawScene() {
 		for (int c = 0; c < 10; ++c) {
 			glPointSize(6);
 			if (selected && r == min_r && c == min_c) {
-				glPointSize(10);
-				glColor3f(0, 0, 1);
+				drawSphere(c * 21.7, (6-r) * 21.7, 0, 6, QColor(0, 0, 255));
 			} else {
-				glColor3f(1, 1, 0);
+				drawSphere(c * 21.7, (6-r) * 21.7, 0, 4, QColor(255, 255, 0));
 			}
-			glBegin(GL_POINTS);
-			glVertex3f(c * 21.7, (6-r) * 21.7, 1);
-			glEnd();
 		}
 	}
 
@@ -235,34 +231,6 @@ void GLWidget3D::drawScene() {
 				glEnd();
 			}
 		}
-		
-
-		/*
-		// カメラ２の座標を計算
-		//cv::Mat dst;
-		cv::Rodrigues(rvecs[1], dst);
-		std::vector<cv::Mat> unprojected_c2(4);
-		for (int i = 0; i < 4; ++i) {
-			unprojected_c2[i] = dst.inv() * (c[i] - tvecs[1]);
-		}
-
-
-		// カメラ２の表示
-		glLineWidth(3);
-		for (int i = 1; i <= 3; ++i) {
-			if (i == 1) {
-				glColor3f(0, 0, 1);
-			} else if (i == 20) {
-				glColor3f(0, 1, 0);
-			} else {
-				glColor3f(1, 0, 0);
-			}
-			glBegin(GL_LINES);
-			glVertex3f(unprojected_c2[0].at<double>(0, 0), unprojected_c2[0].at<double>(1, 0), -unprojected_c2[0].at<double>(2, 0));
-			glVertex3f(unprojected_c2[i].at<double>(0, 0), unprojected_c2[i].at<double>(1, 0), -unprojected_c2[i].at<double>(2, 0));
-			glEnd();
-		}
-		*/
 	}
 }
 
@@ -284,4 +252,36 @@ QVector2D GLWidget3D::mouseTo2D(int x,int y) {
 	gluUnProject(x, (float)viewport[3] - y, z, modelview, projection, viewport, &posX, &posY, &posZ);
 
 	return QVector2D(posX, posY);
+}
+
+void GLWidget3D::drawSphere(float x, float y, float z, float r, const QColor& color) {
+	int slices = 16;
+	int stacks = 8;
+
+	glBegin(GL_QUADS);
+	glColor3f(color.redF(), color.greenF(), color.blueF());
+	for (int i = 0; i < slices; ++i) {
+		float theta1 = M_PI * 2.0f / slices * i;
+		float theta2 = M_PI * 2.0f / slices * (i + 1);
+
+		for (int j = 0; j < stacks; ++j) {
+			float phi1 = M_PI / stacks * j - M_PI * 0.5;
+			float phi2 = M_PI / stacks * (j + 1) - M_PI * 0.5;
+
+			QVector3D pt1 = QVector3D(cosf(theta1) * cosf(phi1), sinf(theta1) * cosf(phi1), sinf(phi1));
+			QVector3D pt2 = QVector3D(cosf(theta2) * cosf(phi1), sinf(theta2) * cosf(phi1), sinf(phi1));
+			QVector3D pt3 = QVector3D(cosf(theta2) * cosf(phi2), sinf(theta2) * cosf(phi2), sinf(phi2));
+			QVector3D pt4 = QVector3D(cosf(theta1) * cosf(phi2), sinf(theta1) * cosf(phi2), sinf(phi2));
+
+			glNormal3f(pt1.x(), pt1.y(), pt1.z());
+			glVertex3f(x + pt1.x() * r, y + pt1.y() * r, z + pt1.z() * r);
+			glNormal3f(pt2.x(), pt2.y(), pt2.z());
+			glVertex3f(x + pt2.x() * r, y + pt2.y() * r, z + pt2.z() * r);
+			glNormal3f(pt3.x(), pt3.y(), pt3.z());
+			glVertex3f(x + pt3.x() * r, y + pt3.y() * r, z + pt3.z() * r);
+			glNormal3f(pt4.x(), pt4.y(), pt4.z());
+			glVertex3f(x + pt4.x() * r, y + pt4.y() * r, z + pt4.z() * r);
+		}
+	}
+	glEnd();
 }

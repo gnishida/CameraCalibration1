@@ -34,6 +34,7 @@ public:
 	GLWidget3D(MainWindow* mainWin);
 	void drawScene();
 	QVector2D mouseTo2D(int x,int y);
+	void drawSphere(float x, float y, float z, float r, const QColor& color);
 
 protected:
 	void initializeGL();

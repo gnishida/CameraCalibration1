@@ -1,7 +1,7 @@
 /********************************************************************************
 ** Form generated from reading UI file 'MainWindow.ui'
 **
-** Created: Sun Feb 1 14:21:10 2015
+** Created: Tue Feb 3 16:20:56 2015
 **      by: Qt User Interface Compiler version 4.8.2
 **
 ** WARNING! All changes made in this file will be lost when recompiling UI file!
@@ -72,7 +72,7 @@ public:
 
     void retranslateUi(QMainWindow *MainWindowClass)
     {
-        MainWindowClass->setWindowTitle(QApplication::translate("MainWindowClass", "MainWindow", 0, QApplication::UnicodeUTF8));
+        MainWindowClass->setWindowTitle(QApplication::translate("MainWindowClass", "Zhang's Camera Calibration", 0, QApplication::UnicodeUTF8));
         actionExit->setText(QApplication::translate("MainWindowClass", "Exit", 0, QApplication::UnicodeUTF8));
         actionOpenImages->setText(QApplication::translate("MainWindowClass", "Open Images", 0, QApplication::UnicodeUTF8));
         actionOpenImages->setShortcut(QApplication::translate("MainWindowClass", "Ctrl+O", 0, QApplication::UnicodeUTF8));

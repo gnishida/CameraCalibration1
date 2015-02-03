@@ -75,14 +75,18 @@ void ImageWidget::paintEvent(QPaintEvent * /* event */) {
 	painter.drawImage(QPoint(0, 0), image);
 
 	// 検出したコーナーを表示
+	QBrush old = painter.brush();
 	for (int i = 0; i < imagePoints.size(); ++i) {
 		if (selected && i == selected_index) {
-			painter.setPen(QPen(QColor(0, 0, 255), 3, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+			painter.setBrush(QBrush(QColor(0, 0, 255)));
+			painter.setPen(QPen(QColor(0, 0, 255), 5, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
 		} else {
+			painter.setBrush(QBrush(QColor(255, 255, 0)));
 			painter.setPen(QPen(QColor(255, 255, 0), 3, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
 		}
 		painter.drawEllipse(imagePoints[i].x-6, image.height()-imagePoints[i].y-6, 12, 12);
 	}
+	painter.setBrush(old);
 
 	// 誤差を表示
 	if (selected) {
