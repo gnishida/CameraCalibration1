@@ -365,6 +365,18 @@ void Calibration::computeExtrinsicMatrix(cv::Mat& cameraMat, cv::Mat& H, cv::Mat
 }
 
 double Calibration::refine(std::vector<std::vector<cv::Point3f> >& objectPoints, std::vector<std::vector<cv::Point2f> >& imagePoints, cv::Mat& cameraMat, cv::Mat& distortion, std::vector<cv::Mat>& rvecs, std::vector<cv::Mat>& tvecs) {
+
+	printf("3D points\n");
+	for (int i = 0; i < 10; ++i) {
+		printf("(%.3lf, %.3lf)\n", objectPoints[0][i].x, objectPoints[0][i].y);
+	}
+	printf("\n");
+
+
+
+
+
+
 	// パラメータの数
 	const int n = 17;
 
@@ -421,6 +433,7 @@ double Calibration::refine(std::vector<std::vector<cv::Point3f> >& objectPoints,
 	data.m = m;
 	data.y = y;
 	data.objectPoints = &objectPoints;
+	data.imagePoints = &imagePoints;
 
 	// 観測データの数と同じ値にすることを推奨する
 	int ldfjac = m;
@@ -462,6 +475,21 @@ double Calibration::refine(std::vector<std::vector<cv::Point3f> >& objectPoints,
 		printf("%.3lf\n", x[i]);
 	}
 	printf("\n");
+
+	// 収束結果を反映する
+	cameraMat.at<double>(0, 0) = x[0]; // alpha
+	cameraMat.at<double>(1, 1) = x[1]; // beta
+	cameraMat.at<double>(0, 1) = x[2]; // gamma
+	cameraMat.at<double>(0, 2) = x[3]; // u0
+	cameraMat.at<double>(1, 2) = x[4]; // v0
+	for (int i = 0; i < rvecs.size(); ++i) {
+		rvecs[i].at<double>(0, 0) = x[i * 6 + 5]; // rx
+		rvecs[i].at<double>(1, 0) = x[i * 6 + 6]; // ry
+		rvecs[i].at<double>(2, 0) = x[i * 6 + 7]; // rz
+		tvecs[i].at<double>(0, 0) = x[i * 6 + 8]; // tx
+		tvecs[i].at<double>(1, 0) = x[i * 6 + 9]; // ty
+		tvecs[i].at<double>(2, 0) = x[i * 6 + 10]; // tz
+	}
 
 	return fnorm;
 }
@@ -524,9 +552,12 @@ int Calibration::fcn(void *p, int m, int n, const real *x, real *fvec, int iflag
 		projectPoints(((fcndata_t*)p)->objectPoints->at(i), rvecs[i], tvecs[i], cameraMat, distortion, projectedImagePoints);
 
 		for (int j = 0; j < 70; ++j) {
+			//printf("(%.3lf,%.3lf) <-> (%.3lf,%.3lf)\n", projectedImagePoints[j].x, projectedImagePoints[j].y, ((fcndata_t*)p)->imagePoints->at(i).at(j).x, ((fcndata_t*)p)->imagePoints->at(i).at(j).y);
+
+
 			// 射影結果と観測データの誤差を格納する
-			fvec[index++] = SQR(projectedImagePoints[j].x - ((fcndata_t*)p)->objectPoints->at(i).at(j).x);
-			fvec[index++] = SQR(projectedImagePoints[j].y - ((fcndata_t*)p)->objectPoints->at(i).at(j).y);
+			fvec[index++] = SQR(projectedImagePoints[j].x - ((fcndata_t*)p)->imagePoints->at(i).at(j).x);
+			fvec[index++] = SQR(projectedImagePoints[j].y - ((fcndata_t*)p)->imagePoints->at(i).at(j).y);
 		}
 	}
 

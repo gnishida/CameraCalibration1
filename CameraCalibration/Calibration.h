@@ -10,6 +10,7 @@ typedef struct {
 	int m;
 	real *y;
 	std::vector<std::vector<cv::Point3f> >* objectPoints;
+	std::vector<std::vector<cv::Point2f> >* imagePoints;
 
 } fcndata_t;
 
