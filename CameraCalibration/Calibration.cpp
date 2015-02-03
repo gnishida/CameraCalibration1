@@ -1,6 +1,5 @@
 ﻿#include "Calibration.h"
 
-
 double Calibration::calibrateCamera(std::vector<std::vector<cv::Point3f> >& objectPoints, std::vector<std::vector<cv::Point2f> >& imagePoints, cv::Size size, cv::Mat& cameraMat, cv::Mat& distortion, std::vector<cv::Mat>& rvecs, std::vector<cv::Mat>& tvecs) {
 	cv::calibrateCamera(objectPoints, imagePoints, size, cameraMat, distortion, rvecs, tvecs, CV_CALIB_ZERO_TANGENT_DIST | CV_CALIB_FIX_K2 | CV_CALIB_FIX_K3 | CV_CALIB_FIX_K4 | CV_CALIB_FIX_K5 | CV_CALIB_FIX_K6);
 	printf("Camera Matrix:\n");
@@ -333,31 +332,138 @@ void Calibration::computeIntrinsicMatrix(cv::Mat& B, cv::Mat& cameraMat) {
 }
 
 void Calibration::computeExtrinsicMatrix(cv::Mat& cameraMat, cv::Mat& H, cv::Mat& R, cv::Mat& T) {
-	R = cameraMat.inv() * H;
-	double lmbd = -1.0 / sqrt(R.at<double>(0, 0) * R.at<double>(0, 0) + R.at<double>(1, 0) * R.at<double>(1, 0) + R.at<double>(2, 0) * R.at<double>(2, 0));
+	cv::Mat R33(3, 3, CV_64F);
+	R33 = cameraMat.inv() * H;
+	double lmbd = -1.0 / sqrt(R33.at<double>(0, 0) * R33.at<double>(0, 0) + R33.at<double>(1, 0) * R33.at<double>(1, 0) + R33.at<double>(2, 0) * R33.at<double>(2, 0));
 
-	R = R * lmbd;
+	R33 = R33 * lmbd;
 
 	T = cv::Mat(3, 1, CV_64F);
 	for (int r = 0; r < 3; ++r) {
-		T.at<double>(r, 0) = R.at<double>(r, 2);
+		T.at<double>(r, 0) = R33.at<double>(r, 2);
 	}
 
+	// cross productにより回転行列の３列目を計算
 	{
-		R.at<double>(0, 2) = R.at<double>(1, 0) * R.at<double>(2, 1) - R.at<double>(2, 0) * R.at<double>(1, 1);
-		R.at<double>(1, 2) = R.at<double>(2, 0) * R.at<double>(0, 1) - R.at<double>(0, 0) * R.at<double>(2, 1);
-		R.at<double>(2, 2) = R.at<double>(0, 0) * R.at<double>(1, 1) - R.at<double>(1, 0) * R.at<double>(0, 1);
+		R33.at<double>(0, 2) = R33.at<double>(1, 0) * R33.at<double>(2, 1) - R33.at<double>(2, 0) * R33.at<double>(1, 1);
+		R33.at<double>(1, 2) = R33.at<double>(2, 0) * R33.at<double>(0, 1) - R33.at<double>(0, 0) * R33.at<double>(2, 1);
+		R33.at<double>(2, 2) = R33.at<double>(0, 0) * R33.at<double>(1, 1) - R33.at<double>(1, 0) * R33.at<double>(0, 1);
 	}
 
 	// 回転行列の各列をnormalize
 	for (int c = 0; c < 3; ++c) {
-		double l = sqrt(R.at<double>(0, c) * R.at<double>(0, c) + R.at<double>(1, c) * R.at<double>(1, c) + R.at<double>(2, c) * R.at<double>(2, c));
+		double l = sqrt(R33.at<double>(0, c) * R33.at<double>(0, c) + R33.at<double>(1, c) * R33.at<double>(1, c) + R33.at<double>(2, c) * R33.at<double>(2, c));
 		for (int r = 0; r < 3; ++r) {
-			R.at<double>(r, c) /= l;
+			R33.at<double>(r, c) /= l;
 		}
 	}
+
+	// 3x1行列に変換する
+	cv::Rodrigues(R33, R);
 }
 
 double Calibration::refine(std::vector<std::vector<cv::Point3f> >& objectPoints, std::vector<std::vector<cv::Point2f> >& imagePoints, cv::Mat& cameraMat, cv::Mat& distortion, std::vector<cv::Mat>& rvecs, std::vector<cv::Mat>& tvecs) {
-	return 0.0;
+	// パラメータの数
+	const int n = 11;
+
+	// 観測データの数
+	const int m = 9; 
+
+	// パラメータ（alpha, beta, gamma, u0, v0, rx, ry, rz, tx, ty, tz)
+	real x[n];
+
+	// パラメータの初期推定値
+	x[0] = cameraMat.at<double>(0, 0);
+	x[0] = cameraMat.at<double>(0, 0);
+	x[0] = cameraMat.at<double>(0, 0);
+
+	// 観測データ（m個）
+	//real y[m] = {1.4e-1, 1.8e-1, 2.2e-1, 2.5e-1, 2.9e-1, 3.2e-1, 3.5e-1, 3.9e-1, 3.7e-1, 5.8e-1, 7.3e-1, 9.6e-1, 1.34, 2.1, 4.39};
+	real y[m] = {10, 30, 20, 70, 30, 10, 80, 40, 60};
+
+	// 真値と観測データとの誤差が格納される配列
+	real fvec[m];
+
+	// 結果のヤコビ行列
+	real fjac[m*n];
+
+	// lmdif内部使用パラメータ
+	int ipvt[n];
+
+	real diag[n], qtf[n], wa1[n], wa2[n], wa3[n], wa4[m];
+
+	// 観測データを格納する構造体オブジェクト
+	fcndata_t data;
+	data.m = m;
+	data.y = y;
+
+	// 観測データの数と同じ値にすることを推奨する
+	int ldfjac = m;
+
+	// 各種パラメータ（推奨値のまま）
+	real ftol = sqrt(__cminpack_func__(dpmpar)(1));
+	real xtol = sqrt(__cminpack_func__(dpmpar)(1));
+	real gtol = 0.;
+
+	// 何回繰り返すか？
+	int maxfev = 800;
+
+	// 収束チェック用の微小値
+	real epsfcn = 1e-08;
+	int mode = 1;
+
+	// 1が推奨されている？
+	real factor = 1;//1.e2;
+
+	// 実際に繰り返した回数
+	int nfev;
+
+	int nprint = 0;
+	int info = __cminpack_func__(lmdif)(fcn, &data, m, n, x, fvec, ftol, xtol, gtol, maxfev, epsfcn,
+									diag, mode, factor, nprint, &nfev, fjac, ldfjac, ipvt, qtf, wa1, wa2, wa3, wa4);
+	real fnorm = __cminpack_func__(enorm)(m, fvec);
+
+	printf(" final l2 norm of the residuals%15.7g\n\n", (double)fnorm);
+	printf(" number of function evaluations%10i\n\n", nfev);
+	printf(" exit parameter %10i\n\n", info);
+	printf(" final approximate solution\n");
+	for (int i = 0; i < n; ++i) {
+		printf("%lf\t", (double)x[i]);
+	}
+	printf("\n");
+
+	return fnorm;
+}
+
+/**
+ * 自分の関数を記述し、真値と観測データとの差を計算する。
+ *
+ * @param p		観測データが入った構造体オブジェクト
+ * @param m		観測データの数
+ * @param n		パラメータの数
+ * @param x		パラメータ配列
+ * @param fvec	真値と観測データとの差を格納する配列
+ * @param iflag	lmdifから返されるフラグ (0なら終了?)
+ * @return		0を返却する
+ */
+int Calibration::fcn(void *p, int m, int n, const real *x, real *fvec, int iflag) {
+	const real *y = ((fcndata_t*)p)->y;
+	//assert(m == 15 && n == 3);
+
+	if (iflag == 0) {
+		/* insert print statements here when nprint is positive. */
+		/* if the nprint parameter to lmdif is positive, the function is
+		called every nprint iterations with iflag=0, so that the
+		function may perform special operations, such as printing
+		residuals. */
+		return 0;
+	}
+
+	// 真値と観測データの差を計算する
+	for (int i = 0; i < m; ++i) {
+		real tmp1 = i * 10 + 10;
+		fvec[i] = y[i] - (x[0] * tmp1 + x[1]);
+	}
+
+	return 0;
 }

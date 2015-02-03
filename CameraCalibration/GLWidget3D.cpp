@@ -213,11 +213,7 @@ void GLWidget3D::drawScene() {
 		for (int i = 0; i < NUM_IMAGES; ++i) {
 			// カメラ座標を計算
 			cv::Mat dst;
-			if (rvecs[i].cols == 1) {
-				cv::Rodrigues(rvecs[i], dst);
-			} else {
-				dst = rvecs[i];
-			}
+			cv::Rodrigues(rvecs[i], dst);
 			std::vector<cv::Mat> unprojected_c(4);
 			for (int k = 0; k < 4; ++k) {
 				unprojected_c[k] = dst.inv() * (c[k] - tvecs[i]);
