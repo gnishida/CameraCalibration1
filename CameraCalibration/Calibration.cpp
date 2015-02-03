@@ -35,6 +35,15 @@ double Calibration::calibrateCamera(std::vector<std::vector<cv::Point3f> >& obje
 	cv::Mat B;
 	computeB(H, size, B);
 
+	printf("B:\n");
+	for (int r = 0; r < B.rows; ++r) {
+		for (int c = 0; c < B.cols; ++c) {
+			printf("%.3lf\t", B.at<double>(r, c));
+		}
+		printf("\n");
+	}
+	printf("\n");
+
 	computeIntrinsicMatrix(B, cameraMat);
 	printf("Camera Matrix:\n");
 	for (int r = 0; r < cameraMat.rows; ++r) {
@@ -143,37 +152,19 @@ void Calibration::computeH(std::vector<cv::Point3f>& objectPoints, std::vector<c
 	FILE* fp = fopen("test.txt", "w");
 	fprintf(fp, "[");
 	for (int r = 0; r < A.rows; ++r) {
-		if (r > 0) fprintf(fp, "; ");
+		if (r > 0) fprintf(fp, ";\n");
 		for (int c = 0; c < 9; ++c) {
-			if (c > 0) fprintf(fp, " ");
-			fprintf(fp, "%.1f", A.at<double>(r, c));
+			if (c > 0) fprintf(fp, ",");
+			fprintf(fp, "%.3f", A.at<double>(r, c));
 		}
 	}
 	fprintf(fp, "]\n\n");
 	fclose(fp);
 
-	cv::Mat eigenvalues;
-	cv::Mat eigenvectors;
-	cv::eigen(A.t() * A, eigenvalues, eigenvectors);
-	for (int r = 0; r < eigenvalues.rows; ++r) {
-		for (int c = 0; c < eigenvalues.cols; ++c) {
-			printf("%.3f, ", eigenvalues.at<double>(r, c));
-		}
-		printf("\n");
-	}
-	printf("\n");
-
-	for (int r = 0; r < eigenvectors.rows; ++r) {
-		for (int c = 0; c < eigenvectors.cols; ++c) {
-			printf("%.3f, ", eigenvectors.at<double>(r, c));
-		}
-		printf("\n");
-	}
-
-
 	cv::Mat w, u, v;
 	cv::SVD::compute(A, w, u, v);
 
+	/*
 	for (int r = 0; r < v.rows; ++r) {
 		for (int c = 0; c < v.cols; ++c) {
 			printf("%.3f, ", v.at<double>(r, c));
@@ -181,30 +172,22 @@ void Calibration::computeH(std::vector<cv::Point3f>& objectPoints, std::vector<c
 		printf("\n");
 	}
 	printf("\n");
+	*/
 	
 	H = cv::Mat(3, 3, CV_64F);
-	H.at<double>(0, 0) = v.at<double>(0, v.cols - 1);
-	H.at<double>(0, 1) = v.at<double>(1, v.cols - 1);
-	H.at<double>(0, 2) = v.at<double>(2, v.cols - 1);
-	H.at<double>(1, 0) = v.at<double>(3, v.cols - 1);
-	H.at<double>(1, 1) = v.at<double>(4, v.cols - 1);
-	H.at<double>(1, 2) = v.at<double>(5, v.cols - 1);
-	H.at<double>(2, 0) = v.at<double>(6, v.cols - 1);
-	H.at<double>(2, 1) = v.at<double>(7, v.cols - 1);
-	H.at<double>(2, 2) = v.at<double>(8, v.cols - 1);
+	H.at<double>(0, 0) = v.at<double>(v.rows - 1, 0);
+	H.at<double>(0, 1) = v.at<double>(v.rows - 1, 1);
+	H.at<double>(0, 2) = v.at<double>(v.rows - 1, 2);
+	H.at<double>(1, 0) = v.at<double>(v.rows - 1, 3);
+	H.at<double>(1, 1) = v.at<double>(v.rows - 1, 4);
+	H.at<double>(1, 2) = v.at<double>(v.rows - 1, 5);
+	H.at<double>(2, 0) = v.at<double>(v.rows - 1, 6);
+	H.at<double>(2, 1) = v.at<double>(v.rows - 1, 7);
+	H.at<double>(2, 2) = v.at<double>(v.rows - 1, 8);
 
 
 	// チェック
-	cv::Mat v2(9, 1, CV_64F);
-	for (int r = 0; r < 9; ++r) {
-		v2.at<double>(r, 0) = v.at<double>(r, v.cols - 1);
-	}
-
-	cv::Mat hoge = A * v2;
-	for (int r = 0; r < hoge.rows; ++r) {
-		printf("%lf\n", hoge.at<double>(r, 0));
-	}
-
+	/*
 	for (int i = 0; i < objectPoints.size(); ++i) {
 		cv::Mat pt(3, 1, CV_64F);
 		pt.at<double>(0, 0) = objectPoints[i].x;
@@ -215,7 +198,7 @@ void Calibration::computeH(std::vector<cv::Point3f>& objectPoints, std::vector<c
 
 		printf("(%.2lf, %.2lf) <-> (%.2lf, %.2lf)\n", imagePoints[i].x, imagePoints[i].y, pt2.at<double>(0, 0) / pt2.at<double>(2, 0), pt2.at<double>(1, 0) / pt2.at<double>(2, 0));
 	}
-
+	*/
 }
 
 void Calibration::computeB(std::vector<cv::Mat>& H, cv::Size& size, cv::Mat& B) {
@@ -239,15 +222,15 @@ void Calibration::computeB(std::vector<cv::Mat>& H, cv::Size& size, cv::Mat& B) 
 	cv::SVD::compute(A, w, u, v);
 
 	B = cv::Mat(3, 3, CV_64F);
-	B.at<double>(0, 0) = v.at<double>(0, v.cols - 1);
+	B.at<double>(0, 0) = v.at<double>(v.rows - 1, 0);
 	B.at<double>(0, 1) = 0;
-	B.at<double>(0, 2) = -u0 * v.at<double>(0, v.cols - 1);
+	B.at<double>(0, 2) = -u0 * v.at<double>(v.rows - 1, 0);
 	B.at<double>(1, 0) = 0;
-	B.at<double>(1, 1) = v.at<double>(1, v.cols - 1);
-	B.at<double>(1, 2) = -v0 * v.at<double>(1, v.cols - 1);
-	B.at<double>(2, 0) = -u0 * v.at<double>(0, v.cols - 1);
-	B.at<double>(2, 1) = -v0 * v.at<double>(1, v.cols - 1);
-	B.at<double>(2, 2) = v.at<double>(2, v.cols - 1);
+	B.at<double>(1, 1) = v.at<double>(v.rows - 1, 1);
+	B.at<double>(1, 2) = -v0 * v.at<double>(v.rows - 1, 1);
+	B.at<double>(2, 0) = -u0 * v.at<double>(v.rows - 1, 0);
+	B.at<double>(2, 1) = -v0 * v.at<double>(v.rows - 1, 1);
+	B.at<double>(2, 2) = v.at<double>(v.rows - 1, 2);
 }
 
 void Calibration::computeIntrinsicMatrix(cv::Mat& B, cv::Mat& cameraMat) {
