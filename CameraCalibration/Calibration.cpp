@@ -1,5 +1,7 @@
 ﻿#include "Calibration.h"
 
+#define SQR(x)	((x) * (x))
+
 double Calibration::calibrateCamera(std::vector<std::vector<cv::Point3f> >& objectPoints, std::vector<std::vector<cv::Point2f> >& imagePoints, cv::Size size, cv::Mat& cameraMat, cv::Mat& distortion, std::vector<cv::Mat>& rvecs, std::vector<cv::Mat>& tvecs) {
 	cv::calibrateCamera(objectPoints, imagePoints, size, cameraMat, distortion, rvecs, tvecs, CV_CALIB_ZERO_TANGENT_DIST | CV_CALIB_FIX_K2 | CV_CALIB_FIX_K3 | CV_CALIB_FIX_K4 | CV_CALIB_FIX_K5 | CV_CALIB_FIX_K6);
 	printf("Camera Matrix:\n");
@@ -105,7 +107,7 @@ double Calibration::calibrateCamera(std::vector<std::vector<cv::Point3f> >& obje
  * @param distortion			distortion parameters
  * @param projectedImagePoints	the projected points on the image plane
  */
-void Calibration::projectPoints(std::vector<cv::Point3f>& objectPoints, cv::Mat& rvec, cv::Mat& tvec, cv::Mat& cameraMat, cv::Mat& distortion, std::vector<cv::Point2f>& projectedImagePoints) {
+void Calibration::projectPoints(std::vector<cv::Point3f> objectPoints, cv::Mat& rvec, cv::Mat& tvec, cv::Mat& cameraMat, cv::Mat& distortion, std::vector<cv::Point2f>& projectedImagePoints) {
 	// 外部パラメータ行列の作成
 	cv::Mat R;
 	if (rvec.cols == 3) {
@@ -364,22 +366,44 @@ void Calibration::computeExtrinsicMatrix(cv::Mat& cameraMat, cv::Mat& H, cv::Mat
 
 double Calibration::refine(std::vector<std::vector<cv::Point3f> >& objectPoints, std::vector<std::vector<cv::Point2f> >& imagePoints, cv::Mat& cameraMat, cv::Mat& distortion, std::vector<cv::Mat>& rvecs, std::vector<cv::Mat>& tvecs) {
 	// パラメータの数
-	const int n = 11;
+	const int n = 17;
 
-	// 観測データの数
-	const int m = 9; 
+	// 観測データの数 ((x, y) * 70 * 画像数)
+	const int m = 280; 
 
-	// パラメータ（alpha, beta, gamma, u0, v0, rx, ry, rz, tx, ty, tz)
+	// パラメータ（alpha, beta, gamma, u0, v0, (rx, ry, rz, tx, ty, tz) * 画像数 )
 	real x[n];
 
 	// パラメータの初期推定値
-	x[0] = cameraMat.at<double>(0, 0);
-	x[0] = cameraMat.at<double>(0, 0);
-	x[0] = cameraMat.at<double>(0, 0);
+	x[0] = cameraMat.at<double>(0, 0); // alpha
+	x[1] = cameraMat.at<double>(1, 1); // beta
+	x[2] = cameraMat.at<double>(0, 1); // gamma
+	x[3] = cameraMat.at<double>(0, 2); // u0
+	x[4] = cameraMat.at<double>(1, 2); // v0
+	for (int i = 0; i < rvecs.size(); ++i) {
+		x[i * 6 + 5] = rvecs[i].at<double>(0, 0); // rx
+		x[i * 6 + 6] = rvecs[i].at<double>(1, 0); // ry
+		x[i * 6 + 7] = rvecs[i].at<double>(2, 0); // rz
+		x[i * 6 + 8] = tvecs[i].at<double>(0, 0); // tx
+		x[i * 6 + 9] = tvecs[i].at<double>(1, 0); // ty
+		x[i * 6 + 10] = tvecs[i].at<double>(2, 0); // tz
+	}
+
+	printf("x:\n");
+	for (int i = 0; i < n; ++i) {
+		printf("%.3lf\n", x[i]);
+	}
+	printf("\n");
 
 	// 観測データ（m個）
-	//real y[m] = {1.4e-1, 1.8e-1, 2.2e-1, 2.5e-1, 2.9e-1, 3.2e-1, 3.5e-1, 3.9e-1, 3.7e-1, 5.8e-1, 7.3e-1, 9.6e-1, 1.34, 2.1, 4.39};
-	real y[m] = {10, 30, 20, 70, 30, 10, 80, 40, 60};
+	real y[m];
+	int index = 0;
+	for (int i = 0; i < imagePoints.size(); ++i) {
+		for (int j = 0; j < imagePoints[i].size(); ++j) {
+			y[index++] = imagePoints[i][j].x;
+			y[index++] = imagePoints[i][j].y;
+		}
+	}
 
 	// 真値と観測データとの誤差が格納される配列
 	real fvec[m];
@@ -396,6 +420,7 @@ double Calibration::refine(std::vector<std::vector<cv::Point3f> >& objectPoints,
 	fcndata_t data;
 	data.m = m;
 	data.y = y;
+	data.objectPoints = &objectPoints;
 
 	// 観測データの数と同じ値にすることを推奨する
 	int ldfjac = m;
@@ -432,6 +457,12 @@ double Calibration::refine(std::vector<std::vector<cv::Point3f> >& objectPoints,
 	}
 	printf("\n");
 
+	printf("x:\n");
+	for (int i = 0; i < n; ++i) {
+		printf("%.3lf\n", x[i]);
+	}
+	printf("\n");
+
 	return fnorm;
 }
 
@@ -459,10 +490,44 @@ int Calibration::fcn(void *p, int m, int n, const real *x, real *fvec, int iflag
 		return 0;
 	}
 
+	// カメラ内部パラメータ行列
+	cv::Mat cameraMat = cv::Mat::eye(3, 3, CV_64F);
+	cameraMat.at<double>(0, 0) = x[0]; // alpha
+	cameraMat.at<double>(1, 1) = x[1]; // beta
+	cameraMat.at<double>(0, 1) = x[2]; // gamma
+	cameraMat.at<double>(0, 2) = x[3]; // u0
+	cameraMat.at<double>(1, 2) = x[4]; // v0
+
+	// distortion
+	cv::Mat distortion = cv::Mat::zeros(1, 8, CV_64F);
+
+	std::vector<cv::Mat> rvecs(2);
+	std::vector<cv::Mat> tvecs(2);
+	for (int i = 0; i < 2; ++i) {
+		// カメラ外部パラメータ行列
+		rvecs[i] = cv::Mat(3, 1, CV_64F);
+		rvecs[i].at<double>(0, 0) = x[i * 6 + 5];
+		rvecs[i].at<double>(1, 0) = x[i * 6 + 6];
+		rvecs[i].at<double>(2, 0) = x[i * 6 + 7];
+
+		tvecs[i] = cv::Mat(3, 1, CV_64F);
+		tvecs[i].at<double>(0, 0) = x[i * 6 + 8];
+		tvecs[i].at<double>(1, 0) = x[i * 6 + 9];
+		tvecs[i].at<double>(2, 0) = x[i * 6 + 10];
+	}
+
 	// 真値と観測データの差を計算する
-	for (int i = 0; i < m; ++i) {
-		real tmp1 = i * 10 + 10;
-		fvec[i] = y[i] - (x[0] * tmp1 + x[1]);
+	int index = 0;
+	for (int i = 0; i < 2; ++i) {
+		std::vector<cv::Point2f> projectedImagePoints;
+		
+		projectPoints(((fcndata_t*)p)->objectPoints->at(i), rvecs[i], tvecs[i], cameraMat, distortion, projectedImagePoints);
+
+		for (int j = 0; j < 70; ++j) {
+			// 射影結果と観測データの誤差を格納する
+			fvec[index++] = SQR(projectedImagePoints[j].x - ((fcndata_t*)p)->objectPoints->at(i).at(j).x);
+			fvec[index++] = SQR(projectedImagePoints[j].y - ((fcndata_t*)p)->objectPoints->at(i).at(j).y);
+		}
 	}
 
 	return 0;
