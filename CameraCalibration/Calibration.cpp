@@ -365,18 +365,6 @@ void Calibration::computeExtrinsicMatrix(cv::Mat& cameraMat, cv::Mat& H, cv::Mat
 }
 
 double Calibration::refine(std::vector<std::vector<cv::Point3f> >& objectPoints, std::vector<std::vector<cv::Point2f> >& imagePoints, cv::Mat& cameraMat, cv::Mat& distortion, std::vector<cv::Mat>& rvecs, std::vector<cv::Mat>& tvecs) {
-
-	printf("3D points\n");
-	for (int i = 0; i < 10; ++i) {
-		printf("(%.3lf, %.3lf)\n", objectPoints[0][i].x, objectPoints[0][i].y);
-	}
-	printf("\n");
-
-
-
-
-
-
 	// パラメータの数
 	const int n = 18;
 
@@ -522,7 +510,6 @@ double Calibration::refine(std::vector<std::vector<cv::Point3f> >& objectPoints,
  */
 int Calibration::fcn(void *p, int m, int n, const real *x, real *fvec, int iflag) {
 	const real *y = ((fcndata_t*)p)->y;
-	//assert(m == 15 && n == 3);
 
 	if (iflag == 0) {
 		/* insert print statements here when nprint is positive. */
