@@ -448,7 +448,7 @@ double Calibration::refine(std::vector<std::vector<cv::Point3f> >& objectPoints,
 	int maxfev = 1600;
 
 	// 収束チェック用の微小値
-	real epsfcn = 1e-08;
+	real epsfcn = 1e-010;//1e-08;
 	int mode = 1;
 
 	// 1が推奨されている？
@@ -493,7 +493,20 @@ double Calibration::refine(std::vector<std::vector<cv::Point3f> >& objectPoints,
 		tvecs[i].at<double>(2, 0) = x[i * 6 + 11]; // tz
 	}
 
-	return fnorm;
+	// 真値と観測データの差を合計する
+	double total_error = 0.0;
+	for (int i = 0; i < 2; ++i) {
+		std::vector<cv::Point2f> projectedImagePoints;
+		
+		projectPoints(objectPoints[i], rvecs[i], tvecs[i], cameraMat, distortion, projectedImagePoints);
+
+		for (int j = 0; j < 70; ++j) {
+			// 射影結果と観測データの誤差
+			total_error += sqrt(SQR(projectedImagePoints[j].x - imagePoints[i][j].x) + SQR(projectedImagePoints[j].y - imagePoints[i][j].y));
+		}
+	}
+
+	return total_error / 140;
 }
 
 /**
@@ -555,9 +568,6 @@ int Calibration::fcn(void *p, int m, int n, const real *x, real *fvec, int iflag
 		projectPoints(((fcndata_t*)p)->objectPoints->at(i), rvecs[i], tvecs[i], cameraMat, distortion, projectedImagePoints);
 
 		for (int j = 0; j < 70; ++j) {
-			//printf("(%.3lf,%.3lf) <-> (%.3lf,%.3lf)\n", projectedImagePoints[j].x, projectedImagePoints[j].y, ((fcndata_t*)p)->imagePoints->at(i).at(j).x, ((fcndata_t*)p)->imagePoints->at(i).at(j).y);
-
-
 			// 射影結果と観測データの誤差を格納する
 			fvec[index++] = SQR(projectedImagePoints[j].x - ((fcndata_t*)p)->imagePoints->at(i).at(j).x);
 			fvec[index++] = SQR(projectedImagePoints[j].y - ((fcndata_t*)p)->imagePoints->at(i).at(j).y);
