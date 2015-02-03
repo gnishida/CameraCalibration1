@@ -15,6 +15,7 @@ double Calibration::calibrateCamera(std::vector<std::vector<cv::Point3f> >& obje
 	for (int i = 0; i < rvecs.size(); ++i) {
 		printf("R:\n");
 		cv::Mat dst;
+		//rodrigues(rvecs[i], dst);
 		cv::Rodrigues(rvecs[i], dst);
 		for (int r = 0; r < dst.rows; ++r) {
 			for (int c = 0; c < dst.cols; ++c) {
@@ -110,8 +111,9 @@ double Calibration::calibrateCamera(std::vector<std::vector<cv::Point3f> >& obje
 void Calibration::projectPoints(std::vector<cv::Point3f> objectPoints, cv::Mat& rvec, cv::Mat& tvec, cv::Mat& cameraMat, cv::Mat& distortion, std::vector<cv::Point2f>& projectedImagePoints) {
 	// 外部パラメータ行列の作成
 	cv::Mat R;
+	//rodrigues(rvec, R);
 	cv::Rodrigues(rvec, R);
-
+			
 	cv::Mat P(3, 4, CV_64F);
 	for (int r = 0; r < 3; ++r) {
 		for (int c = 0; c < 3; ++c) {
@@ -152,6 +154,44 @@ void Calibration::projectPoints(std::vector<cv::Point3f> objectPoints, cv::Mat& 
 
 		projectedImagePoints[i].x = u + du;
 		projectedImagePoints[i].y = v + dv;
+	}
+}
+
+void Calibration::rodrigues(cv::Mat& src, cv::Mat& dst) {
+	if (src.cols == 1) {
+		double theta = cv::norm(src);
+		src /= theta;
+
+		dst = cv::Mat::zeros(3, 3, CV_64F);
+		dst.at<double>(0, 1) = -src.at<double>(2, 0);
+		dst.at<double>(0, 2) = src.at<double>(1, 0);
+		dst.at<double>(1, 0) = src.at<double>(2, 0);
+		dst.at<double>(1, 2) = -src.at<double>(0, 0);
+		dst.at<double>(2, 0) = -src.at<double>(1, 0);
+		dst.at<double>(2, 1) = src.at<double>(0, 0);
+
+		dst = dst * sin(theta) + cv::Mat::eye(3, 3, CV_64F) * cos(theta) + src * src.t() * (1 - cos(theta));
+		cv::Rodrigues(src, dst);
+	} else {
+		dst = cv::Mat(3, 1, CV_64F);
+		cv::Mat tmp = (src - src.t()) * 0.5;
+		dst.at<double>(0, 0) = tmp.at<double>(2, 1);
+		dst.at<double>(1, 0) = tmp.at<double>(0, 2);
+		dst.at<double>(2, 0) = tmp.at<double>(1, 0);
+		double theta = cv::norm(dst);
+		dst /= theta;
+		printf("Rodg\n");
+		for (int r = 0; r < dst.rows; ++r) {
+			printf("%.3lf, ", dst.at<double>(r, 0));
+		}
+		printf("\n");
+
+		cv::Rodrigues(src, dst);
+		printf("Rodg\n");
+		for (int r = 0; r < dst.rows; ++r) {
+			printf("%.3lf, ", dst.at<double>(r, 0));
+		}
+		printf("\n");
 	}
 }
 
@@ -357,6 +397,7 @@ void Calibration::computeExtrinsicMatrix(cv::Mat& cameraMat, cv::Mat& H, cv::Mat
 	}
 
 	// 3x1行列に変換する
+	//rodrigues(R33, R);
 	cv::Rodrigues(R33, R);
 }
 
