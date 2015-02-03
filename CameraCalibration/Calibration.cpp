@@ -378,7 +378,7 @@ double Calibration::refine(std::vector<std::vector<cv::Point3f> >& objectPoints,
 
 
 	// パラメータの数
-	const int n = 17;
+	const int n = 18;
 
 	// 観測データの数 ((x, y) * 70 * 画像数)
 	const int m = 280; 
@@ -392,13 +392,14 @@ double Calibration::refine(std::vector<std::vector<cv::Point3f> >& objectPoints,
 	x[2] = cameraMat.at<double>(0, 1); // gamma
 	x[3] = cameraMat.at<double>(0, 2); // u0
 	x[4] = cameraMat.at<double>(1, 2); // v0
+	x[5] = 0; // distortion
 	for (int i = 0; i < rvecs.size(); ++i) {
-		x[i * 6 + 5] = rvecs[i].at<double>(0, 0); // rx
-		x[i * 6 + 6] = rvecs[i].at<double>(1, 0); // ry
-		x[i * 6 + 7] = rvecs[i].at<double>(2, 0); // rz
-		x[i * 6 + 8] = tvecs[i].at<double>(0, 0); // tx
-		x[i * 6 + 9] = tvecs[i].at<double>(1, 0); // ty
-		x[i * 6 + 10] = tvecs[i].at<double>(2, 0); // tz
+		x[i * 6 + 6] = rvecs[i].at<double>(0, 0); // rx
+		x[i * 6 + 7] = rvecs[i].at<double>(1, 0); // ry
+		x[i * 6 + 8] = rvecs[i].at<double>(2, 0); // rz
+		x[i * 6 + 9] = tvecs[i].at<double>(0, 0); // tx
+		x[i * 6 + 10] = tvecs[i].at<double>(1, 0); // ty
+		x[i * 6 + 11] = tvecs[i].at<double>(2, 0); // tz
 	}
 
 	printf("x:\n");
@@ -444,7 +445,7 @@ double Calibration::refine(std::vector<std::vector<cv::Point3f> >& objectPoints,
 	real gtol = 0.;
 
 	// 何回繰り返すか？
-	int maxfev = 800;
+	int maxfev = 1600;
 
 	// 収束チェック用の微小値
 	real epsfcn = 1e-08;
@@ -482,13 +483,14 @@ double Calibration::refine(std::vector<std::vector<cv::Point3f> >& objectPoints,
 	cameraMat.at<double>(0, 1) = x[2]; // gamma
 	cameraMat.at<double>(0, 2) = x[3]; // u0
 	cameraMat.at<double>(1, 2) = x[4]; // v0
+	distortion.at<double>(0, 0) = x[5]; // distortion
 	for (int i = 0; i < rvecs.size(); ++i) {
-		rvecs[i].at<double>(0, 0) = x[i * 6 + 5]; // rx
-		rvecs[i].at<double>(1, 0) = x[i * 6 + 6]; // ry
-		rvecs[i].at<double>(2, 0) = x[i * 6 + 7]; // rz
-		tvecs[i].at<double>(0, 0) = x[i * 6 + 8]; // tx
-		tvecs[i].at<double>(1, 0) = x[i * 6 + 9]; // ty
-		tvecs[i].at<double>(2, 0) = x[i * 6 + 10]; // tz
+		rvecs[i].at<double>(0, 0) = x[i * 6 + 6]; // rx
+		rvecs[i].at<double>(1, 0) = x[i * 6 + 7]; // ry
+		rvecs[i].at<double>(2, 0) = x[i * 6 + 8]; // rz
+		tvecs[i].at<double>(0, 0) = x[i * 6 + 9]; // tx
+		tvecs[i].at<double>(1, 0) = x[i * 6 + 10]; // ty
+		tvecs[i].at<double>(2, 0) = x[i * 6 + 11]; // tz
 	}
 
 	return fnorm;
@@ -528,20 +530,21 @@ int Calibration::fcn(void *p, int m, int n, const real *x, real *fvec, int iflag
 
 	// distortion
 	cv::Mat distortion = cv::Mat::zeros(1, 8, CV_64F);
+	distortion.at<double>(0, 0) = x[5]; // distortion
 
 	std::vector<cv::Mat> rvecs(2);
 	std::vector<cv::Mat> tvecs(2);
 	for (int i = 0; i < 2; ++i) {
 		// カメラ外部パラメータ行列
 		rvecs[i] = cv::Mat(3, 1, CV_64F);
-		rvecs[i].at<double>(0, 0) = x[i * 6 + 5];
-		rvecs[i].at<double>(1, 0) = x[i * 6 + 6];
-		rvecs[i].at<double>(2, 0) = x[i * 6 + 7];
+		rvecs[i].at<double>(0, 0) = x[i * 6 + 6];
+		rvecs[i].at<double>(1, 0) = x[i * 6 + 7];
+		rvecs[i].at<double>(2, 0) = x[i * 6 + 8];
 
 		tvecs[i] = cv::Mat(3, 1, CV_64F);
-		tvecs[i].at<double>(0, 0) = x[i * 6 + 8];
-		tvecs[i].at<double>(1, 0) = x[i * 6 + 9];
-		tvecs[i].at<double>(2, 0) = x[i * 6 + 10];
+		tvecs[i].at<double>(0, 0) = x[i * 6 + 9];
+		tvecs[i].at<double>(1, 0) = x[i * 6 + 10];
+		tvecs[i].at<double>(2, 0) = x[i * 6 + 11];
 	}
 
 	// 真値と観測データの差を計算する
