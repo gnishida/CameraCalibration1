@@ -41,7 +41,7 @@ void GLWidget3D::mousePressEvent(QMouseEvent *e)
 	}
 
 	// 各2D画像上でも、該当の点を表示し、エラーも表示する
-	if (selected) {
+	if (initialized && selected) {
 		for (int i = 0; i < NUM_IMAGES; ++i) {
 			mainWin->imgWidget[i].selectPoint(min_r * 10 + min_c);
 		}
@@ -276,18 +276,12 @@ QVector2D GLWidget3D::mouseTo2D(int x,int y) {
 	glGetDoublev(GL_PROJECTION_MATRIX, projection);
 	glGetIntegerv(GL_VIEWPORT, viewport);
 
-	// retrieve the projected z-buffer of the origin
-	GLdouble origX, origY, origZ;
-	gluProject(0, 0, 0, modelview, projection, viewport, &origX, &origY, &origZ);
-
-	// set up the projected point
-	GLfloat winX = (float)x;
-	GLfloat winY = (float)viewport[3] - (float)y;
-	GLfloat winZ = origZ;
+	float z;
+	glReadPixels(x, (float)viewport[3] - y, 1, 1, GL_DEPTH_COMPONENT, GL_FLOAT, &z);
 	
 	// unproject the image plane coordinate to the model space
 	GLdouble posX, posY, posZ;
-	gluUnProject(winX, winY, winZ, modelview, projection, viewport, &posX, &posY, &posZ);
+	gluUnProject(x, (float)viewport[3] - y, z, modelview, projection, viewport, &posX, &posY, &posZ);
 
 	return QVector2D(posX, posY);
 }
