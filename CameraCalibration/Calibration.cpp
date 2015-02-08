@@ -4,34 +4,11 @@
 
 double Calibration::calibrateCamera(std::vector<std::vector<cv::Point3f> >& objectPoints, std::vector<std::vector<cv::Point2f> >& imagePoints, cv::Size size, cv::Mat& cameraMat, cv::Mat& distortion, std::vector<cv::Mat>& rvecs, std::vector<cv::Mat>& tvecs) {
 	cv::calibrateCamera(objectPoints, imagePoints, size, cameraMat, distortion, rvecs, tvecs, CV_CALIB_ZERO_TANGENT_DIST | CV_CALIB_FIX_K2 | CV_CALIB_FIX_K3 | CV_CALIB_FIX_K4 | CV_CALIB_FIX_K5 | CV_CALIB_FIX_K6);
-	printf("Camera Matrix:\n");
-	for (int r = 0; r < cameraMat.rows; ++r) {
-		for (int c = 0; c < cameraMat.cols; ++c) {
-			printf("%.3lf\t", cameraMat.at<double>(r, c));
-		}
-		printf("\n");
-	}
-	printf("\n");
+	std::cout << "<<< OpenCV results >>>" << std::endl;
+	std::cout << "Camera Matrix:" << std::endl << cameraMat << std::endl;
 	for (int i = 0; i < rvecs.size(); ++i) {
-		printf("R:\n");
-		cv::Mat dst;
-		rodrigues(rvecs[i], dst);
-		for (int r = 0; r < dst.rows; ++r) {
-			for (int c = 0; c < dst.cols; ++c) {
-				printf("%.3lf\t", dst.at<double>(r, c));
-			}
-			printf("\n");
-		}
-		printf("\n");
-
-		printf("T:\n");
-		for (int r = 0; r < tvecs[i].rows; ++r) {
-			for (int c = 0; c < tvecs[i].cols; ++c) {
-				printf("%.3lf\t", tvecs[i].at<double>(r, c));
-			}
-			printf("\n");
-		}
-		printf("\n");
+		std::cout << "R:" << std::endl << rvecs[i] << std::endl;
+		std::cout << "T:" << std::endl << tvecs[i] << std::endl;
 	}
 	
 
@@ -41,55 +18,24 @@ double Calibration::calibrateCamera(std::vector<std::vector<cv::Point3f> >& obje
 	rvecs.resize(n);
 	tvecs.resize(n);
 
+	std::cout << "<<< My results >>>" << std::endl;
 	std::vector<cv::Mat> H(n);
 	for (int i = 0; i < n; ++i) {
 		computeH(objectPoints[i], imagePoints[i], H[i]);
-		printf("Homography Matrix:\n");
-		for (int r = 0; r < H[i].rows; ++r) {
-			for (int c = 0; c < H[i].cols; ++c) {
-				printf("%.3lf\t", H[i].at<double>(r, c));
-			}
-			printf("\n");
-		}
-		printf("\n");
+		std::cout << "Homograph Matrix: " << std::endl << H[i] << std::endl;
 	}
 
 	cv::Mat B;
 	computeB(H, size, B);
 
 	computeIntrinsicMatrix(B, cameraMat);
-	printf("Camera Matrix:\n");
-	for (int r = 0; r < cameraMat.rows; ++r) {
-		for (int c = 0; c < cameraMat.cols; ++c) {
-			printf("%.3lf\t", cameraMat.at<double>(r, c));
-		}
-		printf("\n");
-	}
-	printf("\n");
-
-	cameraMat.at<double>(0, 0) = 780;
-	cameraMat.at<double>(1, 1) = 780;
+	std::cout << "Camera Matrix: " << std::endl << cameraMat << std::endl;
 
 	for (int i = 0; i < n; ++i) {
 		computeExtrinsicMatrix(cameraMat, H[i], rvecs[i], tvecs[i]);
 
-		printf("R:\n");
-		for (int r = 0; r < rvecs[i].rows; ++r) {
-			for (int c = 0; c < rvecs[i].cols; ++c) {
-				printf("%.3lf\t", rvecs[i].at<double>(r, c));
-			}
-			printf("\n");
-		}
-		printf("\n");
-
-		printf("T:\n");
-		for (int r = 0; r < tvecs[i].rows; ++r) {
-			for (int c = 0; c < tvecs[i].cols; ++c) {
-				printf("%.3lf\t", tvecs[i].at<double>(r, c));
-			}
-			printf("\n");
-		}
-		printf("\n");
+		std::cout << "R:" << std::endl << rvecs[i] << std::endl;
+		std::cout << "T:" << std::endl << tvecs[i] << std::endl;
 	}
 
 	double totalError = refine(objectPoints, imagePoints, cameraMat, distortion, rvecs, tvecs);
@@ -278,6 +224,8 @@ void Calibration::computeB(std::vector<cv::Mat>& H, cv::Size& size, cv::Mat& B) 
 		A.at<double>(i * 2 + 1, 4) = h12 * h13 * 2 - h22 * h23 * 2;
 		A.at<double>(i * 2 + 1, 5) = h13 * h13 - h23 * h23;
 	}
+
+	// 追加の制約条件
 	{
 		A.at<double>(n * 2 + 0, 0) = 0;
 		A.at<double>(n * 2 + 0, 1) = 1;
